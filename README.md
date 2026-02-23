@@ -3,7 +3,15 @@
 Dieses Repository enthaelt zwei spielbare Systeme:
 
 - `cloud_hanse/`: Webspiel mit Drive-Sync (`python cloud_hanse/server.py`)
+- <img width="1024" height="768" alt="web3" src="https://github.com/user-attachments/assets/f4ed9b37-5150-4396-9699-c280f6dc002e" />
+<img width="1024" height="768" alt="web2" src="https://github.com/user-attachments/assets/4e8be9e7-8072-4748-b7c2-14f52fccc1f4" />
+<img width="1024" height="768" alt="web" src="https://github.com/user-attachments/assets/44d5880e-dc27-46a6-b2ba-8c4a51172370" />
+
+
 - `HP_Game/`: CLI/pygame Einzelspiel mit ATHERIA-Metrikadapter
+<img width="1652" height="1054" alt="desktop3" src="https://github.com/user-attachments/assets/5c907725-7b85-43f5-a02b-27bd158e5716" />
+<img width="1652" height="1054" alt="desktop2" src="https://github.com/user-attachments/assets/971fae68-8e85-4e05-b412-174592a1f09b" />
+<img width="1652" height="1054" alt="desktop1" src="https://github.com/user-attachments/assets/7aaee5ff-6c26-42ba-8268-fa9f35ad208b" />
 
 Der Ordner `ATHERIA/` dient als Runtime-Zulieferer fuer `HP_Game` (Demo-Metriken).
 
