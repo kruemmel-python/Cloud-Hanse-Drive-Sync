@@ -1,0 +1,959 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/cloud_hanse/world_state.schema.json",
+  "title": "Cloud Hanse World State",
+  "description": "Persistenter globaler Spielzustand fuer eine Hanse/Gilde-Wirtschaftssimulation mit Neuro-Spielmechanik.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "neuro_state",
+    "economy",
+    "politics",
+    "guilds",
+    "players",
+    "npcs",
+    "events",
+    "integrity"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "world_id",
+        "version",
+        "created_at",
+        "updated_at",
+        "last_event_id",
+        "drive"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "world_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_event_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "drive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "folder_url",
+            "folder_id",
+            "file_name",
+            "sync_source",
+            "last_pull_at",
+            "last_push_at"
+          ],
+          "properties": {
+            "folder_url": {
+              "type": "string",
+              "minLength": 8
+            },
+            "folder_id": {
+              "type": "string",
+              "minLength": 8
+            },
+            "file_name": {
+              "type": "string",
+              "const": "world_state.json"
+            },
+            "file_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sync_source": {
+              "type": "string",
+              "enum": [
+                "bootstrap",
+                "drive_public",
+                "drive_service_account",
+                "local_cache"
+              ]
+            },
+            "last_pull_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "last_push_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    },
+    "neuro_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dopamine",
+        "oxytocin",
+        "decoq_resonance",
+        "immunity_level",
+        "anomaly_score",
+        "last_immunity_trigger"
+      ],
+      "properties": {
+        "dopamine": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "oxytocin": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "decoq_resonance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "immunity_level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "anomaly_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "last_immunity_trigger": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "economy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "global_demand_index",
+        "global_supply_index",
+        "inflation",
+        "market_shock",
+        "last_tick_at",
+        "goods",
+        "cities",
+        "trade_routes"
+      ],
+      "properties": {
+        "global_demand_index": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 3
+        },
+        "global_supply_index": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 3
+        },
+        "inflation": {
+          "type": "number",
+          "minimum": -0.2,
+          "maximum": 0.4
+        },
+        "market_shock": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "last_tick_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "goods": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9_\\- ]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/goodState"
+          }
+        },
+        "cities": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9_\\- ]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/cityState"
+          }
+        },
+        "trade_routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tradeRoute"
+          }
+        }
+      }
+    },
+    "politics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hansa_council",
+        "legitimacy",
+        "corruption",
+        "edicts",
+        "sanctions"
+      ],
+      "properties": {
+        "hansa_council": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seats",
+            "stability",
+            "public_order",
+            "faction_influence"
+          ],
+          "properties": {
+            "seats": {
+              "type": "integer",
+              "minimum": 3
+            },
+            "stability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "public_order": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "faction_influence": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[A-Za-z0-9_\\- ]+$"
+              },
+              "additionalProperties": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "legitimacy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "corruption": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "edicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/politicalEdict"
+          }
+        },
+        "sanctions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sanction"
+          }
+        }
+      }
+    },
+    "guilds": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_\\- ]+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/guildState"
+      }
+    },
+    "players": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-zA-Z0-9_\\-]{3,64}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/playerState"
+      }
+    },
+    "npcs": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-zA-Z0-9_\\-]{3,64}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/npcState"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/worldEvent"
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_hash",
+        "last_guard_scan_at",
+        "anomaly_history",
+        "immunity_events",
+        "manipulation_flags"
+      ],
+      "properties": {
+        "state_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "last_guard_scan_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "anomaly_history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/anomalyRecord"
+          }
+        },
+        "immunity_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/immunityEvent"
+          }
+        },
+        "manipulation_flags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "goodState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_price",
+        "price",
+        "supply",
+        "demand",
+        "volatility",
+        "momentum"
+      ],
+      "properties": {
+        "base_price": {
+          "type": "number",
+          "minimum": 1
+        },
+        "price": {
+          "type": "number",
+          "minimum": 1
+        },
+        "supply": {
+          "type": "number",
+          "minimum": 0
+        },
+        "demand": {
+          "type": "number",
+          "minimum": 0
+        },
+        "volatility": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "momentum": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      }
+    },
+    "cityState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "population",
+        "wealth",
+        "stability",
+        "guild_influence",
+        "tax_rate",
+        "inventory",
+        "demand_bias",
+        "supply_bias",
+        "route_pressure"
+      ],
+      "properties": {
+        "population": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wealth": {
+          "type": "number",
+          "minimum": 0
+        },
+        "stability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "guild_influence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tax_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.6
+        },
+        "inventory": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9_\\- ]+$"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "demand_bias": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9_\\- ]+$"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0.2,
+            "maximum": 3
+          }
+        },
+        "supply_bias": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9_\\- ]+$"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0.2,
+            "maximum": 3
+          }
+        },
+        "route_pressure": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "tradeRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "from_city",
+        "to_city",
+        "distance",
+        "risk",
+        "capacity",
+        "traffic"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "from_city": {
+          "type": "string"
+        },
+        "to_city": {
+          "type": "string"
+        },
+        "distance": {
+          "type": "number",
+          "minimum": 1
+        },
+        "risk": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "capacity": {
+          "type": "number",
+          "minimum": 1
+        },
+        "traffic": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "politicalEdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "effect",
+        "issued_at",
+        "expires_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "sanction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "target_type",
+        "target_id",
+        "reason",
+        "severity",
+        "issued_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "target_type": {
+          "type": "string",
+          "enum": [
+            "player",
+            "guild",
+            "city",
+            "market"
+          ]
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "guildState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "cohesion",
+        "trust",
+        "treasury",
+        "rank_points",
+        "member_count",
+        "doctrine"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "cohesion": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "trust": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "treasury": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rank_points": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "member_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "doctrine": {
+          "type": "string"
+        }
+      }
+    },
+    "shipState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "cargo_capacity",
+        "hull",
+        "rigging"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "cargo_capacity": {
+          "type": "number",
+          "minimum": 1
+        },
+        "hull": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "rigging": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "playerState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "display_name",
+        "home_city",
+        "guild_id",
+        "cash",
+        "debt",
+        "reputation",
+        "inventory",
+        "ships",
+        "last_action_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "home_city": {
+          "type": "string"
+        },
+        "guild_id": {
+          "type": "string"
+        },
+        "cash": {
+          "type": "number",
+          "minimum": 0
+        },
+        "debt": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reputation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "inventory": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9_\\- ]+$"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "ships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/shipState"
+          }
+        },
+        "last_action_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "goalState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "weight",
+        "progress"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "memoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "valence",
+        "note",
+        "at"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "valence": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "note": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "npcState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "city",
+        "archetype",
+        "capital",
+        "trust",
+        "aggression",
+        "vocabulary",
+        "goals",
+        "memory",
+        "last_utterance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "archetype": {
+          "type": "string"
+        },
+        "capital": {
+          "type": "number",
+          "minimum": 0
+        },
+        "trust": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "aggression": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "vocabulary": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/goalState"
+          }
+        },
+        "memory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/memoryEntry"
+          },
+          "maxItems": 20
+        },
+        "last_utterance": {
+          "type": "string"
+        }
+      }
+    },
+    "worldEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "actor_id",
+        "at",
+        "payload"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "anomalyRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at",
+        "score",
+        "reason"
+      ],
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reason": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "immunityEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at",
+        "trigger_score",
+        "response"
+      ],
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "trigger_score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "response": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

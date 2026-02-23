@@ -1,0 +1,533 @@
+{
+  "meta": {
+    "schema_version": "1.0.0",
+    "world_id": "hanse-gilde-hybrid",
+    "version": 1,
+    "created_at": "2026-02-22T00:00:00Z",
+    "updated_at": "2026-02-22T00:00:00Z",
+    "last_event_id": 0,
+    "drive": {
+      "folder_url": "https://drive.google.com/drive/folders/16O5AiugmonSzX1pfZ5a5bjZZ4Y_MoRCO",
+      "folder_id": "16O5AiugmonSzX1pfZ5a5bjZZ4Y_MoRCO",
+      "file_name": "world_state.json",
+      "file_id": null,
+      "sync_source": "bootstrap",
+      "last_pull_at": null,
+      "last_push_at": null
+    }
+  },
+  "neuro_state": {
+    "dopamine": 0.52,
+    "oxytocin": 0.58,
+    "decoq_resonance": 0.18,
+    "immunity_level": 0.0,
+    "anomaly_score": 0.0,
+    "last_immunity_trigger": null
+  },
+  "economy": {
+    "global_demand_index": 1.0,
+    "global_supply_index": 1.0,
+    "inflation": 0.012,
+    "market_shock": 0.0,
+    "last_tick_at": "2026-02-22T00:00:00Z",
+    "goods": {
+      "Salz": {
+        "base_price": 40,
+        "price": 40,
+        "supply": 1050,
+        "demand": 980,
+        "volatility": 0.24,
+        "momentum": 0.0
+      },
+      "Holz": {
+        "base_price": 28,
+        "price": 28,
+        "supply": 1240,
+        "demand": 1000,
+        "volatility": 0.16,
+        "momentum": 0.0
+      },
+      "Pelze": {
+        "base_price": 70,
+        "price": 70,
+        "supply": 760,
+        "demand": 790,
+        "volatility": 0.3,
+        "momentum": 0.0
+      },
+      "Getreide": {
+        "base_price": 22,
+        "price": 22,
+        "supply": 1500,
+        "demand": 1430,
+        "volatility": 0.2,
+        "momentum": 0.0
+      },
+      "Tuch": {
+        "base_price": 55,
+        "price": 55,
+        "supply": 890,
+        "demand": 910,
+        "volatility": 0.24,
+        "momentum": 0.0
+      },
+      "Hering": {
+        "base_price": 30,
+        "price": 30,
+        "supply": 1320,
+        "demand": 1300,
+        "volatility": 0.22,
+        "momentum": 0.0
+      },
+      "Wein": {
+        "base_price": 78,
+        "price": 78,
+        "supply": 620,
+        "demand": 670,
+        "volatility": 0.28,
+        "momentum": 0.0
+      }
+    },
+    "cities": {
+      "Luebeck": {
+        "population": 120000,
+        "wealth": 1.12,
+        "stability": 0.82,
+        "guild_influence": 0.74,
+        "tax_rate": 0.11,
+        "inventory": {
+          "Salz": 190,
+          "Holz": 120,
+          "Pelze": 65,
+          "Getreide": 170,
+          "Tuch": 96,
+          "Hering": 140,
+          "Wein": 52
+        },
+        "demand_bias": {
+          "Salz": 0.98,
+          "Holz": 0.9,
+          "Pelze": 1.18,
+          "Getreide": 0.94,
+          "Tuch": 1.08,
+          "Hering": 0.96,
+          "Wein": 1.12
+        },
+        "supply_bias": {
+          "Salz": 1.08,
+          "Holz": 0.9,
+          "Pelze": 0.84,
+          "Getreide": 1.06,
+          "Tuch": 1.02,
+          "Hering": 1.09,
+          "Wein": 0.83
+        },
+        "route_pressure": 0.34
+      },
+      "Bergen": {
+        "population": 76000,
+        "wealth": 0.96,
+        "stability": 0.78,
+        "guild_influence": 0.63,
+        "tax_rate": 0.1,
+        "inventory": {
+          "Salz": 110,
+          "Holz": 188,
+          "Pelze": 75,
+          "Getreide": 120,
+          "Tuch": 82,
+          "Hering": 210,
+          "Wein": 35
+        },
+        "demand_bias": {
+          "Salz": 1.16,
+          "Holz": 0.86,
+          "Pelze": 0.94,
+          "Getreide": 1.07,
+          "Tuch": 1.04,
+          "Hering": 0.84,
+          "Wein": 1.16
+        },
+        "supply_bias": {
+          "Salz": 0.92,
+          "Holz": 1.2,
+          "Pelze": 1.1,
+          "Getreide": 0.9,
+          "Tuch": 0.96,
+          "Hering": 1.24,
+          "Wein": 0.72
+        },
+        "route_pressure": 0.42
+      },
+      "Malmoe": {
+        "population": 68000,
+        "wealth": 0.94,
+        "stability": 0.76,
+        "guild_influence": 0.58,
+        "tax_rate": 0.09,
+        "inventory": {
+          "Salz": 130,
+          "Holz": 140,
+          "Pelze": 88,
+          "Getreide": 150,
+          "Tuch": 78,
+          "Hering": 126,
+          "Wein": 46
+        },
+        "demand_bias": {
+          "Salz": 1.02,
+          "Holz": 0.94,
+          "Pelze": 1.09,
+          "Getreide": 0.92,
+          "Tuch": 1.04,
+          "Hering": 0.93,
+          "Wein": 1.1
+        },
+        "supply_bias": {
+          "Salz": 0.96,
+          "Holz": 1.06,
+          "Pelze": 0.92,
+          "Getreide": 1.04,
+          "Tuch": 0.98,
+          "Hering": 1.02,
+          "Wein": 0.88
+        },
+        "route_pressure": 0.27
+      },
+      "Riga": {
+        "population": 91000,
+        "wealth": 1.03,
+        "stability": 0.72,
+        "guild_influence": 0.66,
+        "tax_rate": 0.12,
+        "inventory": {
+          "Salz": 80,
+          "Holz": 220,
+          "Pelze": 180,
+          "Getreide": 145,
+          "Tuch": 64,
+          "Hering": 95,
+          "Wein": 28
+        },
+        "demand_bias": {
+          "Salz": 1.18,
+          "Holz": 0.82,
+          "Pelze": 0.82,
+          "Getreide": 1.06,
+          "Tuch": 1.14,
+          "Hering": 1.02,
+          "Wein": 1.2
+        },
+        "supply_bias": {
+          "Salz": 0.86,
+          "Holz": 1.22,
+          "Pelze": 1.26,
+          "Getreide": 1.02,
+          "Tuch": 0.84,
+          "Hering": 0.9,
+          "Wein": 0.65
+        },
+        "route_pressure": 0.5
+      },
+      "Novgorod": {
+        "population": 142000,
+        "wealth": 1.14,
+        "stability": 0.69,
+        "guild_influence": 0.71,
+        "tax_rate": 0.13,
+        "inventory": {
+          "Salz": 70,
+          "Holz": 250,
+          "Pelze": 230,
+          "Getreide": 135,
+          "Tuch": 58,
+          "Hering": 88,
+          "Wein": 24
+        },
+        "demand_bias": {
+          "Salz": 1.24,
+          "Holz": 0.78,
+          "Pelze": 0.75,
+          "Getreide": 1.1,
+          "Tuch": 1.16,
+          "Hering": 1.04,
+          "Wein": 1.24
+        },
+        "supply_bias": {
+          "Salz": 0.82,
+          "Holz": 1.28,
+          "Pelze": 1.35,
+          "Getreide": 0.96,
+          "Tuch": 0.82,
+          "Hering": 0.88,
+          "Wein": 0.6
+        },
+        "route_pressure": 0.57
+      }
+    },
+    "trade_routes": [
+      {
+        "id": "route_luebeck_bergen",
+        "from_city": "Luebeck",
+        "to_city": "Bergen",
+        "distance": 5.0,
+        "risk": 0.26,
+        "capacity": 820,
+        "traffic": 330
+      },
+      {
+        "id": "route_luebeck_malmoe",
+        "from_city": "Luebeck",
+        "to_city": "Malmoe",
+        "distance": 2.0,
+        "risk": 0.1,
+        "capacity": 920,
+        "traffic": 410
+      },
+      {
+        "id": "route_luebeck_riga",
+        "from_city": "Luebeck",
+        "to_city": "Riga",
+        "distance": 6.0,
+        "risk": 0.3,
+        "capacity": 760,
+        "traffic": 280
+      },
+      {
+        "id": "route_riga_novgorod",
+        "from_city": "Riga",
+        "to_city": "Novgorod",
+        "distance": 4.0,
+        "risk": 0.35,
+        "capacity": 680,
+        "traffic": 250
+      }
+    ]
+  },
+  "politics": {
+    "hansa_council": {
+      "seats": 9,
+      "stability": 0.74,
+      "public_order": 0.71,
+      "faction_influence": {
+        "merchant_houses": 0.46,
+        "harbor_bloc": 0.31,
+        "craft_leagues": 0.23
+      }
+    },
+    "legitimacy": 0.74,
+    "corruption": 0.19,
+    "edicts": [],
+    "sanctions": []
+  },
+  "guilds": {
+    "merchant_guild": {
+      "name": "Merchant Guild",
+      "cohesion": 0.66,
+      "trust": 0.68,
+      "treasury": 28000,
+      "rank_points": 3200,
+      "member_count": 31,
+      "doctrine": "Profit mit geordnetem Wettbewerb."
+    },
+    "navigators_guild": {
+      "name": "Navigators Guild",
+      "cohesion": 0.62,
+      "trust": 0.64,
+      "treasury": 19000,
+      "rank_points": 2100,
+      "member_count": 24,
+      "doctrine": "Route zuerst, Risiko kontrollieren."
+    },
+    "artisans_guild": {
+      "name": "Artisans Guild",
+      "cohesion": 0.7,
+      "trust": 0.72,
+      "treasury": 17000,
+      "rank_points": 1800,
+      "member_count": 19,
+      "doctrine": "Qualitaet stabilisiert den Markt."
+    },
+    "free_merchants": {
+      "name": "Free Merchants",
+      "cohesion": 0.42,
+      "trust": 0.45,
+      "treasury": 6000,
+      "rank_points": 240,
+      "member_count": 0,
+      "doctrine": "Freier Handel ohne festen Gildenpakt."
+    }
+  },
+  "players": {},
+  "npcs": {
+    "npc_elsa": {
+      "id": "npc_elsa",
+      "name": "Elsa van Brugge",
+      "city": "Luebeck",
+      "archetype": "broker",
+      "capital": 8600,
+      "trust": 0.64,
+      "aggression": 0.42,
+      "vocabulary": [
+        "fracht",
+        "saldo",
+        "vertrauen",
+        "zunft",
+        "kredit"
+      ],
+      "goals": [
+        {
+          "id": "profit_curve",
+          "kind": "profit",
+          "weight": 0.52,
+          "progress": 0.31
+        },
+        {
+          "id": "guild_stability",
+          "kind": "cohesion",
+          "weight": 0.48,
+          "progress": 0.35
+        }
+      ],
+      "memory": [],
+      "last_utterance": "Der Hafen pulsiert, aber Vertrauen bleibt Ware."
+    },
+    "npc_torsten": {
+      "id": "npc_torsten",
+      "name": "Torsten Ravn",
+      "city": "Bergen",
+      "archetype": "captain",
+      "capital": 7100,
+      "trust": 0.58,
+      "aggression": 0.55,
+      "vocabulary": [
+        "risiko",
+        "sturm",
+        "konvoi",
+        "kurs"
+      ],
+      "goals": [
+        {
+          "id": "route_control",
+          "kind": "logistics",
+          "weight": 0.54,
+          "progress": 0.26
+        },
+        {
+          "id": "speculation",
+          "kind": "profit",
+          "weight": 0.46,
+          "progress": 0.22
+        }
+      ],
+      "memory": [],
+      "last_utterance": "Der Wind ist hart, die Marge haerter."
+    },
+    "npc_agneta": {
+      "id": "npc_agneta",
+      "name": "Agneta Soder",
+      "city": "Malmoe",
+      "archetype": "quartermaster",
+      "capital": 5900,
+      "trust": 0.67,
+      "aggression": 0.34,
+      "vocabulary": [
+        "lager",
+        "reserve",
+        "ausgleich",
+        "preisband"
+      ],
+      "goals": [
+        {
+          "id": "inventory_buffer",
+          "kind": "stability",
+          "weight": 0.63,
+          "progress": 0.4
+        },
+        {
+          "id": "incremental_profit",
+          "kind": "profit",
+          "weight": 0.37,
+          "progress": 0.3
+        }
+      ],
+      "memory": [],
+      "last_utterance": "Jede Kiste ist ein Argument gegen den Absturz."
+    },
+    "npc_ivo": {
+      "id": "npc_ivo",
+      "name": "Ivo der Schreiber",
+      "city": "Riga",
+      "archetype": "scribe",
+      "capital": 6400,
+      "trust": 0.61,
+      "aggression": 0.46,
+      "vocabulary": [
+        "satzung",
+        "einigung",
+        "schuldbrief",
+        "siegel"
+      ],
+      "goals": [
+        {
+          "id": "policy_pressure",
+          "kind": "politics",
+          "weight": 0.51,
+          "progress": 0.33
+        },
+        {
+          "id": "profit_curve",
+          "kind": "profit",
+          "weight": 0.49,
+          "progress": 0.29
+        }
+      ],
+      "memory": [],
+      "last_utterance": "Wer das Siegel haelt, steuert den Preis."
+    },
+    "npc_yaromir": {
+      "id": "npc_yaromir",
+      "name": "Yaromir Volkov",
+      "city": "Novgorod",
+      "archetype": "fur_baron",
+      "capital": 10200,
+      "trust": 0.49,
+      "aggression": 0.66,
+      "vocabulary": [
+        "knappheit",
+        "pfand",
+        "gewinn",
+        "druck"
+      ],
+      "goals": [
+        {
+          "id": "scarcity_leverage",
+          "kind": "profit",
+          "weight": 0.62,
+          "progress": 0.44
+        },
+        {
+          "id": "route_domination",
+          "kind": "logistics",
+          "weight": 0.38,
+          "progress": 0.28
+        }
+      ],
+      "memory": [],
+      "last_utterance": "Knappheit ist nur ein anderes Wort fuer Macht."
+    }
+  },
+  "events": [],
+  "integrity": {
+    "state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "last_guard_scan_at": "2026-02-22T00:00:00Z",
+    "anomaly_history": [],
+    "immunity_events": [],
+    "manipulation_flags": {
+      "rapid_price_spike": false,
+      "negative_inventory": false,
+      "event_spam": false,
+      "impossible_cash_flow": false
+    }
+  }
+}

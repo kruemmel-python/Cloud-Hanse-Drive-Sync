@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+
+# Virtual env
+.venv/
+venv/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Runtime outputs
+logs/
+ATHERIA/logs/
+HP_Game/saves/slot_*.json
+HP_Game/saves/*.json
+*.jsonl
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

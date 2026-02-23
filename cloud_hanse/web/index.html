@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Hanse | Drive-Simulation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Hanse / Gilde Hybrid</p>
+        <h1>Cloud Hanse</h1>
+        <p class="subtitle">
+          Persistente Multiplayer-Welt via Google Drive `world_state.json`
+        </p>
+      </div>
+      <div class="sync-indicator" id="syncStatus">Synchronisiert...</div>
+    </header>
+
+    <section class="neuro-grid">
+      <article class="neuro-card">
+        <h2>Dopamin</h2>
+        <div class="bar"><span id="barDopamine"></span></div>
+        <p id="txtDopamine">0.00</p>
+      </article>
+      <article class="neuro-card">
+        <h2>Oxytocin</h2>
+        <div class="bar"><span id="barOxytocin"></span></div>
+        <p id="txtOxytocin">0.00</p>
+      </article>
+      <article class="neuro-card">
+        <h2>DeCoG Resonanz</h2>
+        <div class="bar"><span id="barResonance"></span></div>
+        <p id="txtResonance">0.00</p>
+      </article>
+      <article class="neuro-card">
+        <h2>Immun-Level</h2>
+        <div class="bar"><span id="barImmunity"></span></div>
+        <p id="txtImmunity">0.00</p>
+      </article>
+    </section>
+
+    <main class="content-grid">
+      <section class="panel panel-cities">
+        <div class="panel-head">
+          <h2>Hansestaedte</h2>
+          <small id="worldVersion">Version -</small>
+        </div>
+        <div id="cityGrid" class="city-grid"></div>
+      </section>
+
+      <section class="panel panel-market">
+        <div class="panel-head">
+          <h2>Warenmarkt</h2>
+          <small id="worldUpdated">Stand -</small>
+        </div>
+        <div class="table-wrap">
+          <table id="goodsTable">
+            <thead>
+              <tr>
+                <th>Ware</th>
+                <th>Preis</th>
+                <th>Momentum</th>
+                <th>Angebot</th>
+                <th>Nachfrage</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel panel-player">
+        <div class="panel-head">
+          <h2>Spielerprofil</h2>
+          <small id="playerInfo">Keine Spieler</small>
+        </div>
+        <label class="player-active-label">Aktiver Spieler
+          <select id="activePlayerSelect"></select>
+        </label>
+        <div id="playerSummary" class="player-summary"></div>
+        <div class="table-wrap">
+          <table id="playerInventoryTable">
+            <thead>
+              <tr>
+                <th>Ware</th>
+                <th>Menge</th>
+                <th>Stadtpreis</th>
+                <th>Warenwert</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel panel-routes">
+        <div class="panel-head">
+          <h2>Handelsrouten</h2>
+          <small>asynchron global</small>
+        </div>
+        <div id="routeList" class="route-list"></div>
+      </section>
+
+      <section class="panel panel-actions">
+        <div class="panel-head">
+          <h2>Aktionen</h2>
+          <small>jede Aktion schreibt global</small>
+        </div>
+
+        <datalist id="playerIdsList"></datalist>
+
+        <form id="createPlayerForm" class="action-form">
+          <h3>Spieler erstellen</h3>
+          <label>Spieler-ID
+            <input id="createPlayerId" name="player_id" value="player_demo" required>
+          </label>
+          <label>Anzeige-Name
+            <input name="display_name" value="Demo Trader">
+          </label>
+          <label>Startstadt
+            <select name="home_city" id="createCity"></select>
+          </label>
+          <label>Startgilde
+            <select name="guild_id" id="createGuild"></select>
+          </label>
+          <label>Startkapital
+            <input name="starting_cash" type="number" min="0" value="6000">
+          </label>
+          <label>Startschulden
+            <input name="starting_debt" type="number" min="0" value="1800">
+          </label>
+          <button type="submit">Spieler anlegen</button>
+        </form>
+
+        <form id="membershipForm" class="action-form">
+          <h3>Gilde beitreten/verlassen</h3>
+          <label>Spieler-ID
+            <input id="membershipPlayerId" list="playerIdsList" name="player_id" value="player_demo" required>
+          </label>
+          <label>Aktion
+            <select name="action_type">
+              <option value="join_guild">Gilde beitreten</option>
+              <option value="leave_guild">Gilde verlassen</option>
+            </select>
+          </label>
+          <label>Ziel/Fallback-Gilde
+            <select name="guild_id" id="membershipGuild"></select>
+          </label>
+          <button type="submit">Mitgliedschaft aendern</button>
+        </form>
+
+        <form id="tradeForm" class="action-form">
+          <h3>Handel</h3>
+          <label>Spieler-ID
+            <input id="tradePlayerId" list="playerIdsList" name="player_id" value="player_demo" required>
+          </label>
+          <label>Anzeige-Name
+            <input name="display_name" value="Demo Trader">
+          </label>
+          <label>Gilde
+            <select name="guild_id" id="tradeGuild"></select>
+          </label>
+          <label>Stadt
+            <select name="city" id="tradeCity"></select>
+          </label>
+          <label>Ware
+            <select name="good" id="tradeGood"></select>
+          </label>
+          <label>Seite
+            <select name="side">
+              <option value="buy">Kaufen</option>
+              <option value="sell">Verkaufen</option>
+            </select>
+          </label>
+          <label>Menge
+            <input name="quantity" type="number" value="5" min="1" max="300" required>
+          </label>
+          <label>Route
+            <select name="route_id" id="tradeRoute">
+              <option value="">(keine Route)</option>
+            </select>
+          </label>
+          <button type="submit">Handel ausfuehren</button>
+        </form>
+
+        <form id="guildForm" class="action-form">
+          <h3>Gildenaktion</h3>
+          <label>Spieler-ID
+            <input id="guildActionPlayerId" list="playerIdsList" name="player_id" value="player_demo" required>
+          </label>
+          <label>Gilde
+            <select name="guild_id" id="guildActionGuild"></select>
+          </label>
+          <label>Typ
+            <select name="action_type">
+              <option value="cohesion_drive">Cohesion Drive</option>
+              <option value="trust_pact">Trust Pact</option>
+              <option value="market_raid">Market Raid</option>
+            </select>
+          </label>
+          <label>Intensitaet (0-1)
+            <input name="intensity" type="number" step="0.05" min="0.05" max="1" value="0.35">
+          </label>
+          <button type="submit">Gildenaktion senden</button>
+        </form>
+      </section>
+
+      <section class="panel panel-events">
+        <div class="panel-head">
+          <h2>Live-Ereignisse</h2>
+          <small id="syncInfo">Polling ...</small>
+        </div>
+        <div id="eventFeed" class="event-feed"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="driveSyncClient.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
