@@ -53,6 +53,12 @@ GOODS = {
     "Wein": {"base_price": 78, "volatility": 0.28},
 }
 
+SHIPYARD = [
+    ("Grosse Kogge", 180, 5200, 7200),
+    ("Holk", 230, 7500, 10200),
+    ("Kraier", 300, 10800, 14600),
+]
+
 CITY_PRICE_BIAS = {
     "Luebeck": {"Salz": 1.00, "Holz": 0.94, "Pelze": 1.16, "Getreide": 0.98, "Tuch": 1.02, "Hering": 1.05, "Wein": 1.10},
     "Bergen": {"Salz": 1.12, "Holz": 0.92, "Pelze": 0.90, "Getreide": 1.10, "Tuch": 1.04, "Hering": 0.84, "Wein": 1.16},

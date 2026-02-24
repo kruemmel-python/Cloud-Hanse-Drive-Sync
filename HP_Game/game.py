@@ -11,6 +11,7 @@ from game_data import (
     CITIES,
     CITY_PRICE_BIAS,
     GOODS,
+    SHIPYARD,
     MAX_PLAYERS,
     MAX_YEARS,
     MIN_NAME_LEN,
@@ -26,7 +27,7 @@ from game_data import (
     STARTING_YEAR,
     TITLE_STEPS,
 )
-from models import Investment, Player
+from models import Investment, Player, Ship
 
 
 class HanseGame:
@@ -115,6 +116,7 @@ class HanseGame:
             name = self._ask_name("Ihren Namen bitte: ")
             gender = self._ask_gender("Maennlich oder Weiblich? (m/w): ")
             city = self._choose_city()
+            ship = Ship(city=city, cargo={good: 0 for good in GOODS})
             player = Player(
                 name=name,
                 gender=gender,
@@ -123,7 +125,7 @@ class HanseGame:
                 debt=STARTING_DEBT,
                 reputation=STARTING_REPUTATION,
                 age=STARTING_AGE + self.rng.randint(0, 4),
-                cargo={good: 0 for good in GOODS},
+                ships=[ship],
             )
             player.chronicle.append(f"ANNO {self.current_year}: Kontor in {city} geoeffnet.")
             self.players.append(player)
@@ -197,8 +199,9 @@ class HanseGame:
             self.current_sea_state = str(raw.get("sea_state", "bewegte See"))
             self.players = [Player.from_dict(entry) for entry in raw["players"]]
             for player in self.players:
-                for good_name in GOODS:
-                    player.cargo.setdefault(good_name, 0)
+                for ship in player.ships:
+                    for good_name in GOODS:
+                        ship.cargo.setdefault(good_name, 0)
             econ_engine_data = raw.get("atheria_economy_engine")
             if isinstance(econ_engine_data, dict):
                 self.economy_engine.load_dict(econ_engine_data)
@@ -441,11 +444,7 @@ class HanseGame:
         print(f"{label} um {amount}% verbessert. Kosten: {cost} Mark.")
 
     def _buy_ship(self, player: Player) -> None:
-        shipyard = [
-            ("Grosse Kogge", 180, 5200, 7200),
-            ("Holk", 230, 7500, 10200),
-            ("Kraier", 300, 10800, 14600),
-        ]
+        shipyard = SHIPYARD
         print("Schiffe:")
         for idx, (name, cap, val, cost) in enumerate(shipyard, start=1):
             print(f"{idx}) {name:12} Ladungen {cap:>3}  Kosten {cost:>5}")
@@ -519,7 +518,8 @@ class HanseGame:
         price_level = self.economy_state.global_price_level
 
         heuer_factor = max(0.75, min(1.45, 0.88 + (price_level - 1.0) * 0.35))
-        heuer = int((140 + player.ship.cargo_capacity // 4) * heuer_factor)
+        total_capacity = sum(ship.cargo_capacity for ship in player.ships)
+        heuer = int((140 + total_capacity // 4) * heuer_factor)
         player.money -= heuer
         if player.debt > 0:
             debt_interest = max(1.01, min(1.10, 1.02 + (price_level - 1.0) * 0.05 - (growth - 1.0) * 0.02))
@@ -618,8 +618,13 @@ class HanseGame:
         return prices
 
     def _net_worth(self, player: Player, prices: Dict[str, int]) -> int:
-        cargo_value = sum(prices[good_name] * qty for good_name, qty in player.cargo.items())
-        return player.money + cargo_value + player.ship.value - player.debt + player.reputation * 150
+        cargo_value = 0
+        for ship in player.ships:
+            cargo_value += sum(prices[good_name] * qty for good_name, qty in ship.cargo.items())
+        for goods in player.warehouses.values():
+            cargo_value += sum(prices[good_name] * qty for good_name, qty in goods.items())
+        fleet_value = sum(ship.value for ship in player.ships)
+        return player.money + cargo_value + fleet_value - player.debt + player.reputation * 150
 
     def _title_for(self, player: Player) -> str:
         _, male, female = TITLE_STEPS[min(player.title_index, len(TITLE_STEPS) - 1)]
