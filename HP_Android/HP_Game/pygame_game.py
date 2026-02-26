@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import os
 import hashlib
@@ -43,10 +44,12 @@ from game_data import (
     STARTING_MONTH,
     STARTING_REPUTATION,
     STARTING_YEAR,
+    modern_shipyard_for_year,
     shipyard_for_year,
     ships_unlocked_in_century,
     title_steps_for_year,
     titles_unlocked_in_century,
+    weapon_profile_for_century,
     weapon_profile_for_year,
     year_to_century,
 )
@@ -95,6 +98,65 @@ BASE_CITY_CONSUMPTION: Dict[str, int] = {
     "Hering": 1,
 }
 
+QUEST_BREWMASTER_TARGET = 220
+QUEST_TIMBER_TARGET = 300
+QUEST_ROUTE_MASTER_TARGET_CITIES = 6
+QUEST_ARMS_RACE_TARGET_CANNONS = 20
+QUEST_ARMS_RACE_TARGET_SHIPS = 3
+BUILDING_QUEST_TIERS = 8
+BUILDING_QUEST_BASE_MULT = 18
+CITY_BANKRUPTCY_LIMIT = -550
+CITY_RECOVERY_TARGET = -120
+CITY_TREASURY_BASE_INCOME_PER_BUILDING = 2
+DIVIDEND_POOL_FACTOR = 0.35
+MAX_BUILDING_SHARE_PERCENT = 100.0
+MIN_BAILOUT_INFLUENCE = 6.0
+BAILOUT_MIN_AMOUNT = 500
+BAILOUT_INFLUENCE_COST = 4.0
+INFLUENCE_PER_SHARE_PURCHASE = 0.30
+INFLUENCE_PER_DIVIDEND_1000 = 0.35
+
+RECIPE_UNLOCK_CENTURY: Dict[str, int] = {
+    "brewery": 14,
+    "salt_mine": 14,
+    "woodcutter": 14,
+    "fishery": 14,
+    "grain_farm": 14,
+    "winery": 14,
+    "weavery": 14,
+    "tannery": 14,
+    "hop_farm": 15,
+    "tar_kiln": 15,
+    "grand_brewery": 15,
+    "spice_trade": 16,
+    "copper_mine": 16,
+    "spice_refinery": 16,
+    "tobacco_farm": 17,
+    "sugar_farm": 17,
+    "sugar_refinery": 17,
+    "coffee_farm": 18,
+    "cotton_farm": 18,
+    "textile_factory": 18,
+    "coal_mine": 19,
+    "steel_mill": 19,
+    "refinery": 19,
+    "electronics_factory": 20,
+    "rare_earth_mine": 21,
+    "chip_factory": 21,
+}
+
+CITY_RECIPE_LEVEL_BONUS: Dict[str, Dict[str, int]] = {
+    "Luebeck": {"brewery": 2, "grand_brewery": 2, "weavery": 2, "textile_factory": 2, "spice_trade": 2},
+    "Bergen": {"woodcutter": 2, "fishery": 2, "tar_kiln": 2, "hop_farm": 2},
+    "Toensberg": {"fishery": 2, "tar_kiln": 2, "sugar_farm": 2},
+    "Warberg": {"grain_farm": 2, "cotton_farm": 2, "refinery": 2},
+    "Malmoe": {"weavery": 2, "textile_factory": 2, "coffee_farm": 2},
+    "Ystad": {"fishery": 2, "spice_trade": 2, "sugar_refinery": 2},
+    "Visby": {"hop_farm": 2, "spice_refinery": 2, "tobacco_farm": 2},
+    "Riga": {"salt_mine": 2, "copper_mine": 2, "steel_mill": 2, "rare_earth_mine": 2},
+    "Novgorod": {"salt_mine": 2, "copper_mine": 2, "coal_mine": 2, "chip_factory": 2},
+}
+
 PRODUCTION_RECIPES: Dict[str, ProductionRecipe] = {
     "brewery": ProductionRecipe(
         id="brewery",
@@ -123,6 +185,160 @@ PRODUCTION_RECIPES: Dict[str, ProductionRecipe] = {
         inputs={},
         outputs={"Hering": 4},
         upkeep=1,
+    ),
+    "grain_farm": ProductionRecipe(
+        id="grain_farm",
+        name="Getreidehof",
+        inputs={},
+        outputs={"Getreide": 5},
+        upkeep=1,
+    ),
+    "winery": ProductionRecipe(
+        id="winery",
+        name="Weinkellerei",
+        inputs={"Getreide": 3},
+        outputs={"Wein": 3},
+        upkeep=2,
+    ),
+    "weavery": ProductionRecipe(
+        id="weavery",
+        name="Weberei",
+        inputs={"Holz": 2},
+        outputs={"Tuch": 3},
+        upkeep=2,
+    ),
+    "tannery": ProductionRecipe(
+        id="tannery",
+        name="Gerberei",
+        inputs={"Salz": 1},
+        outputs={"Pelze": 2},
+        upkeep=2,
+    ),
+    "hop_farm": ProductionRecipe(
+        id="hop_farm",
+        name="Hopfenplantage",
+        inputs={},
+        outputs={"Hopfen": 5},
+        upkeep=1,
+    ),
+    "tar_kiln": ProductionRecipe(
+        id="tar_kiln",
+        name="Teerbrennerei",
+        inputs={"Holz": 3},
+        outputs={"Teer": 4},
+        upkeep=2,
+    ),
+    "grand_brewery": ProductionRecipe(
+        id="grand_brewery",
+        name="Grossbrauerei",
+        inputs={"Getreide": 4, "Hopfen": 2, "Holz": 1},
+        outputs={"Bier": 10},
+        upkeep=4,
+    ),
+    "spice_trade": ProductionRecipe(
+        id="spice_trade",
+        name="Gewuerzhandel",
+        inputs={},
+        outputs={"Gewuerze": 4},
+        upkeep=3,
+    ),
+    "copper_mine": ProductionRecipe(
+        id="copper_mine",
+        name="Kupfermine",
+        inputs={},
+        outputs={"Kupfer": 4},
+        upkeep=2,
+    ),
+    "spice_refinery": ProductionRecipe(
+        id="spice_refinery",
+        name="Gewuerzraffinerie",
+        inputs={"Gewuerze": 4},
+        outputs={"Luxuswaren": 6},
+        upkeep=5,
+    ),
+    "tobacco_farm": ProductionRecipe(
+        id="tobacco_farm",
+        name="Tabakplantage",
+        inputs={},
+        outputs={"Tabak": 5},
+        upkeep=2,
+    ),
+    "sugar_farm": ProductionRecipe(
+        id="sugar_farm",
+        name="Zuckerplantage",
+        inputs={},
+        outputs={"Zucker": 5},
+        upkeep=2,
+    ),
+    "sugar_refinery": ProductionRecipe(
+        id="sugar_refinery",
+        name="Zuckerraffinerie",
+        inputs={"Zucker": 5},
+        outputs={"Luxuswaren": 6},
+        upkeep=4,
+    ),
+    "coffee_farm": ProductionRecipe(
+        id="coffee_farm",
+        name="Kaffeeplantage",
+        inputs={},
+        outputs={"Kaffee": 5},
+        upkeep=2,
+    ),
+    "cotton_farm": ProductionRecipe(
+        id="cotton_farm",
+        name="Baumwollfarm",
+        inputs={},
+        outputs={"Baumwolle": 5},
+        upkeep=2,
+    ),
+    "textile_factory": ProductionRecipe(
+        id="textile_factory",
+        name="Textilmanufaktur",
+        inputs={"Baumwolle": 5},
+        outputs={"Tuch": 7},
+        upkeep=4,
+    ),
+    "coal_mine": ProductionRecipe(
+        id="coal_mine",
+        name="Kohlemine",
+        inputs={},
+        outputs={"Kohle": 6},
+        upkeep=2,
+    ),
+    "steel_mill": ProductionRecipe(
+        id="steel_mill",
+        name="Stahlwerk",
+        inputs={"Kohle": 4, "Kupfer": 2},
+        outputs={"Stahl": 5},
+        upkeep=5,
+    ),
+    "refinery": ProductionRecipe(
+        id="refinery",
+        name="Raffinerie",
+        inputs={"Kohle": 5},
+        outputs={"Treibstoff": 6},
+        upkeep=6,
+    ),
+    "electronics_factory": ProductionRecipe(
+        id="electronics_factory",
+        name="Elektronikfabrik",
+        inputs={"Stahl": 3, "Kupfer": 2},
+        outputs={"Elektronik": 5},
+        upkeep=6,
+    ),
+    "rare_earth_mine": ProductionRecipe(
+        id="rare_earth_mine",
+        name="Seltene Erden Mine",
+        inputs={},
+        outputs={"Seltene Erden": 4},
+        upkeep=4,
+    ),
+    "chip_factory": ProductionRecipe(
+        id="chip_factory",
+        name="Chipfabrik",
+        inputs={"Seltene Erden": 3},
+        outputs={"Mikrochips": 5},
+        upkeep=8,
     ),
 }
 
@@ -208,7 +424,8 @@ class PygameHanseApp:
         )
         self.world_economy = WorldEconomy()
         self.npcs: List[NPCTrader] = []
-        self.last_world_tick: Dict[str, int] = {"producing_buildings": 0, "npc_trades": 0}
+        self.last_world_tick: Dict[str, int] = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
+        self.last_dividend_pools: Dict[str, Dict[str, int]] = {}
         self._ensure_world_state(reset_world=True, reset_npcs=True)
 
         self.selected_slot = 1
@@ -233,6 +450,7 @@ class PygameHanseApp:
         self.missions_open = False
         self.info_open = False
         self.selected_city_market = 0
+        self.selected_city_building_recipe = ""
         self.transfer_drag_good: str | None = None
         self.transfer_drag_value = 0
         self.preview_destination: str | None = None
@@ -249,10 +467,13 @@ class PygameHanseApp:
         self.auto_last_ship_build_month = -9999
         self.time_limit_reached = False
         self.current_century = year_to_century(self.current_year)
+        self.selected_weapon_century = self.current_century
         self.fleet_drag_active = False
         self.fleet_drag_start_y = 0
         self.fleet_drag_start_scroll = 0
         self.fleet_drag_moved = False
+        self.info_scroll = 0
+        self.info_max_scroll = 0
 
         self.new_name = ""
         self.new_gender = "m"
@@ -266,9 +487,13 @@ class PygameHanseApp:
         self.ship_rows: List[Tuple[int, pygame.Rect]] = []
         self.dest_rows: List[Tuple[int, pygame.Rect]] = []
         self.city_market_rows: List[Tuple[int, pygame.Rect]] = []
+        self.city_building_rows: List[Tuple[str, pygame.Rect]] = []
         self.transfer_sliders: List[Tuple[str, pygame.Rect, int, int]] = []
         self.ship_name_input_rect: pygame.Rect | None = None
         self.child_name_input_rect: pygame.Rect | None = None
+        self.editor_weapon_rows: List[Tuple[int, pygame.Rect]] = []
+        self.editor_weapon_list_rect: pygame.Rect | None = None
+        self.editor_weapon_offset = 0
         self.messages: List[str] = [
             "Willkommen in Hanse (pygame).",
             "Neues Spiel anlegen oder Slot laden.",
@@ -281,7 +506,7 @@ class PygameHanseApp:
         return list(self._active_goods().keys())
 
     def _active_shipyard(self) -> List[Tuple[str, int, int, int]]:
-        return shipyard_for_year(self.current_year)
+        return modern_shipyard_for_year(self.current_year)
 
     def _fleet_synergy_shipyard(self) -> List[Tuple[str, int, int, int]]:
         return shipyard_for_year(STARTING_YEAR)
@@ -291,6 +516,27 @@ class PygameHanseApp:
 
     def _active_weapon_profile(self) -> Dict[str, float | int | str]:
         return weapon_profile_for_year(self.current_year)
+
+    def _available_weapon_centuries(self) -> List[int]:
+        return list(range(14, max(14, int(self.current_century)) + 1))
+
+    def _normalize_selected_weapon_century(self) -> int:
+        centuries = self._available_weapon_centuries()
+        current = int(getattr(self, "selected_weapon_century", self.current_century))
+        if current not in centuries:
+            current = centuries[-1]
+        self.selected_weapon_century = current
+        return current
+
+    def _selected_weapon_profile(self) -> Dict[str, float | int | str]:
+        return weapon_profile_for_century(self._normalize_selected_weapon_century())
+
+    def _shift_selected_weapon_century(self, delta: int) -> None:
+        centuries = self._available_weapon_centuries()
+        current = self._normalize_selected_weapon_century()
+        idx = centuries.index(current)
+        idx = max(0, min(len(centuries) - 1, idx + int(delta)))
+        self.selected_weapon_century = centuries[idx]
 
     def _active_cannon_cost(self) -> int:
         profile = self._active_weapon_profile()
@@ -303,20 +549,105 @@ class PygameHanseApp:
     def _max_cannons(self, ship: Ship) -> int:
         return max_cannons_for_ship(ship.name, ship.cargo_capacity, self.current_year)
 
+    def _ship_cannon_power(self, ship: Ship) -> float:
+        inventory = getattr(ship, "cannon_inventory", {})
+        if not isinstance(inventory, dict) or not inventory:
+            return self._active_cannon_power()
+        weighted = 0.0
+        total = 0
+        for raw_century, raw_qty in inventory.items():
+            try:
+                century_i = max(14, int(raw_century))
+                qty_i = max(0, int(raw_qty))
+            except (TypeError, ValueError):
+                continue
+            if qty_i <= 0:
+                continue
+            profile = weapon_profile_for_century(century_i)
+            weighted += float(profile.get("cannon_power", 1.0)) * qty_i
+            total += qty_i
+        if total <= 0:
+            return self._active_cannon_power()
+        return weighted / total
+
+    def _ship_cannon_avg_cost(self, ship: Ship) -> int:
+        inventory = getattr(ship, "cannon_inventory", {})
+        if not isinstance(inventory, dict) or not inventory:
+            return self._active_cannon_cost()
+        weighted = 0.0
+        total = 0
+        for raw_century, raw_qty in inventory.items():
+            try:
+                century_i = max(14, int(raw_century))
+                qty_i = max(0, int(raw_qty))
+            except (TypeError, ValueError):
+                continue
+            if qty_i <= 0:
+                continue
+            profile = weapon_profile_for_century(century_i)
+            weighted += int(profile.get("cannon_cost", CANNON_COST)) * qty_i
+            total += qty_i
+        if total <= 0:
+            return self._active_cannon_cost()
+        return max(1, int(round(weighted / total)))
+
     def _stable_stock_for(self, city_name: str, good_name: str) -> int:
         seed = f"{city_name}:{good_name}:hanse-world-stock"
         digest = hashlib.sha256(seed.encode("utf-8")).digest()
         span = WORLD_INITIAL_STOCK_MAX - WORLD_INITIAL_STOCK_MIN + 1
         return WORLD_INITIAL_STOCK_MIN + (int.from_bytes(digest[:8], "big") % span)
 
+    def _unlocked_recipe_ids(self, century: int | None = None) -> List[str]:
+        century_i = (
+            century
+            if century is not None
+            else int(getattr(self, "current_century", year_to_century(self.current_year)))
+        )
+        return [
+            recipe_id
+            for recipe_id in sorted(
+                PRODUCTION_RECIPES.keys(),
+                key=lambda rid: (RECIPE_UNLOCK_CENTURY.get(rid, 14), rid),
+            )
+            if RECIPE_UNLOCK_CENTURY.get(recipe_id, 14) <= century_i
+        ]
+
+    def _city_building_level(self, city_name: str, recipe_id: str) -> int:
+        city_bonus = CITY_RECIPE_LEVEL_BONUS.get(city_name, {})
+        return max(1, int(city_bonus.get(recipe_id, 1)))
+
     def _default_city_buildings(self, city_name: str) -> List[Building]:
-        if city_name == "Luebeck":
-            return [Building(id="brewery", level=2), Building(id="fishery", level=1)]
-        if city_name == "Bergen":
-            return [Building(id="woodcutter", level=2), Building(id="fishery", level=1)]
-        if city_name in {"Novgorod", "Riga"}:
-            return [Building(id="salt_mine", level=1), Building(id="woodcutter", level=1)]
-        return [Building(id="woodcutter", level=1)]
+        return [
+            Building(id=recipe_id, level=self._city_building_level(city_name, recipe_id))
+            for recipe_id in self._unlocked_recipe_ids()
+        ]
+
+    def _sync_city_buildings_for_century(self, city_name: str, buildings: List[Building]) -> List[Building]:
+        result: List[Building] = []
+        seen: set[str] = set()
+        for building in buildings:
+            if building.id in seen:
+                continue
+            seen.add(building.id)
+            result.append(
+                Building(
+                    id=building.id,
+                    level=max(1, int(building.level)),
+                    active=bool(building.active),
+                )
+            )
+        for recipe_id in self._unlocked_recipe_ids():
+            if recipe_id in seen:
+                continue
+            seen.add(recipe_id)
+            result.append(
+                Building(
+                    id=recipe_id,
+                    level=self._city_building_level(city_name, recipe_id),
+                    active=True,
+                )
+            )
+        return result
 
     def _default_npcs(self) -> List[NPCTrader]:
         goods = self._active_good_names()
@@ -375,7 +706,10 @@ class PygameHanseApp:
                         active=bool(building.active),
                     )
                 )
-            city.buildings = sanitized_buildings or self._default_city_buildings(city_name)
+            city.buildings = self._sync_city_buildings_for_century(
+                city_name,
+                sanitized_buildings or self._default_city_buildings(city_name),
+            )
             try:
                 city.treasury = int(city.treasury)
             except (TypeError, ValueError):
@@ -437,41 +771,204 @@ class PygameHanseApp:
             city.inventory[good_name] = stock - taken
         return taken
 
+    def _player_city_influence(self, city_name: str) -> float:
+        if self.player is None:
+            return 0.0
+        return max(0.0, float(self.player.city_influence.get(city_name, 0.0)))
+
+    def _add_player_city_influence(self, city_name: str, amount: float) -> None:
+        if self.player is None or amount == 0:
+            return
+        current = max(0.0, float(self.player.city_influence.get(city_name, 0.0)))
+        self.player.city_influence[city_name] = max(0.0, current + float(amount))
+
+    def _player_building_share_percent(self, city_name: str, recipe_id: str) -> float:
+        if self.player is None:
+            return 0.0
+        city_shares = self.player.building_shares.get(city_name, {})
+        return max(0.0, min(MAX_BUILDING_SHARE_PERCENT, float(city_shares.get(recipe_id, 0.0))))
+
+    def _set_player_building_share_percent(self, city_name: str, recipe_id: str, pct: float) -> None:
+        if self.player is None:
+            return
+        if city_name not in self.player.building_shares:
+            self.player.building_shares[city_name] = {}
+        self.player.building_shares[city_name][recipe_id] = max(0.0, min(MAX_BUILDING_SHARE_PERCENT, float(pct)))
+
+    def _total_building_share_percent(self, city_name: str, recipe_id: str) -> float:
+        total = 0.0
+        if self.player is not None:
+            total += self._player_building_share_percent(city_name, recipe_id)
+        return max(0.0, total)
+
+    def _share_price_per_percent(self, city_name: str, building: Building) -> int:
+        recipe = PRODUCTION_RECIPES.get(building.id)
+        if recipe is None:
+            return 120
+        active_goods = self._active_goods()
+        weighted_output = 0
+        for good_name, qty in recipe.outputs.items():
+            base_price = int(active_goods.get(good_name, {}).get("base_price", 40))
+            weighted_output += max(0, int(qty)) * base_price
+        weighted_input = 0
+        for good_name, qty in recipe.inputs.items():
+            base_price = int(active_goods.get(good_name, {}).get("base_price", 30))
+            weighted_input += max(0, int(qty)) * base_price
+        century_bonus = max(0, RECIPE_UNLOCK_CENTURY.get(building.id, 14) - 14) * 10
+        level_bonus = max(1, int(building.level)) * 30
+        model_price = 90 + (weighted_output // 4) - (weighted_input // 7) + level_bonus + century_bonus
+        return max(60, model_price)
+
+    def _city_is_bankrupt(self, city_name: str) -> bool:
+        return self._city_economy(city_name).treasury <= CITY_BANKRUPTCY_LIMIT
+
+    def _building_dividend_pool(self, city_name: str, recipe_id: str) -> int:
+        city_pool = self.last_dividend_pools.get(city_name, {})
+        return max(0, int(city_pool.get(recipe_id, 0)))
+
+    def _apply_passive_income(self) -> None:
+        if self.player is None:
+            return
+        total_dividend = 0
+        for city_name, share_map in self.player.building_shares.items():
+            if not isinstance(share_map, dict):
+                continue
+            city = self._city_economy(city_name)
+            for recipe_id, pct_raw in share_map.items():
+                share_pct = max(0.0, min(MAX_BUILDING_SHARE_PERCENT, float(pct_raw)))
+                if share_pct <= 0:
+                    continue
+                pool = self._building_dividend_pool(city_name, recipe_id)
+                if pool <= 0:
+                    continue
+                payout = int(round(pool * (share_pct / 100.0)))
+                if payout <= 0:
+                    continue
+                affordable = max(0, int(city.treasury))
+                actual = min(payout, affordable)
+                if actual <= 0:
+                    continue
+                city.treasury -= actual
+                total_dividend += actual
+                self._add_player_city_influence(city_name, (actual / 1000.0) * INFLUENCE_PER_DIVIDEND_1000)
+        if total_dividend > 0:
+            self.player.money += total_dividend
+            self._log(f"Passive Rendite: +{total_dividend} Mark.")
+
+    def _buy_city_building_shares(self, city_name: str, recipe_id: str, pct: int = 5) -> None:
+        if self.player is None:
+            return
+        city = self._city_economy(city_name)
+        building = next((entry for entry in city.buildings if entry.id == recipe_id), None)
+        if building is None:
+            self._log("Betrieb nicht gefunden.")
+            return
+        if RECIPE_UNLOCK_CENTURY.get(recipe_id, 14) > self.current_century:
+            self._log("Betrieb ist in diesem Jahrhundert noch gesperrt.")
+            return
+        sold_pct = self._total_building_share_percent(city_name, recipe_id)
+        free_pct = max(0.0, MAX_BUILDING_SHARE_PERCENT - sold_pct)
+        if free_pct < 1.0:
+            self._log("Keine freien Anteile verfuegbar.")
+            return
+        buy_pct = max(1, min(int(pct), int(free_pct)))
+        price_per_pct = self._share_price_per_percent(city_name, building)
+        cost = int(round(price_per_pct * buy_pct))
+        if self.player.money < cost:
+            self._log("Nicht genug Mark fuer Anteilskauf.")
+            return
+        self.player.money -= cost
+        city.treasury += int(round(cost * 0.45))
+        current_pct = self._player_building_share_percent(city_name, recipe_id)
+        self._set_player_building_share_percent(city_name, recipe_id, current_pct + buy_pct)
+        self._add_player_city_influence(city_name, buy_pct * INFLUENCE_PER_SHARE_PURCHASE)
+        recipe = PRODUCTION_RECIPES.get(recipe_id)
+        label = recipe.name if recipe else recipe_id
+        self._log(
+            f"Anteilskauf {city_name}: +{buy_pct}% {label} fuer {cost} Mark "
+            f"(gesamt {self._player_building_share_percent(city_name, recipe_id):.1f}%)."
+        )
+
+    def _bailout_city(self, city_name: str, amount: int = 1000) -> None:
+        if self.player is None:
+            return
+        influence = self._player_city_influence(city_name)
+        if influence < MIN_BAILOUT_INFLUENCE:
+            self._log(
+                f"Zu wenig Einfluss in {city_name} ({influence:.1f}/{MIN_BAILOUT_INFLUENCE:.1f}) fuer Rettungsfonds."
+            )
+            return
+        amount_i = max(BAILOUT_MIN_AMOUNT, int(amount))
+        if self.player.money < amount_i:
+            self._log("Nicht genug Mark fuer Rettungsfonds.")
+            return
+        city = self._city_economy(city_name)
+        rescue_bonus = min(0.60, influence / 200.0)
+        treasury_gain = int(round(amount_i * (1.0 + rescue_bonus)))
+        self.player.money -= amount_i
+        city.treasury += treasury_gain
+        self._add_player_city_influence(city_name, -BAILOUT_INFLUENCE_COST)
+        status = "stabilisiert" if city.treasury >= CITY_RECOVERY_TARGET else "weiter kritisch"
+        self._log(
+            f"Rettungsfonds {city_name}: -{amount_i} Mark, Stadtkasse +{treasury_gain} ({status}, {city.treasury})."
+        )
+
     def _tick_world_production(self) -> int:
         self._ensure_world_state()
         active_goods = set(self._active_good_names())
+        current_century = self.current_century
         active_buildings = 0
+        self.last_dividend_pools = {city_name: {} for city_name in CITIES}
         for city_name in CITIES:
             city = self._city_economy(city_name)
+            city.treasury += len(city.buildings) * CITY_TREASURY_BASE_INCOME_PER_BUILDING
             for good_name, base_qty in BASE_CITY_CONSUMPTION.items():
                 if good_name not in active_goods:
                     continue
                 current = max(0, int(city.inventory.get(good_name, 0)))
                 city.inventory[good_name] = max(0, current - max(0, int(base_qty)))
 
-            for building in city.buildings:
+            city_bankrupt = city.treasury <= CITY_BANKRUPTCY_LIMIT
+            for idx, building in enumerate(city.buildings):
                 if not building.active:
                     continue
                 recipe = PRODUCTION_RECIPES.get(building.id)
                 if recipe is None:
                     continue
+                if RECIPE_UNLOCK_CENTURY.get(building.id, 14) > current_century:
+                    continue
+                if city_bankrupt and (idx % 2 == 1):
+                    continue
                 level = max(1, int(building.level))
                 can_run = True
+                input_total = 0
                 for good_name, qty in recipe.inputs.items():
                     required = max(0, int(qty)) * level
                     if city.inventory.get(good_name, 0) < required:
                         can_run = False
                         break
+                    input_total += required
                 if not can_run:
                     continue
 
+                output_total = 0
                 for good_name, qty in recipe.inputs.items():
                     required = max(0, int(qty)) * level
                     city.inventory[good_name] = max(0, int(city.inventory.get(good_name, 0)) - required)
                 for good_name, qty in recipe.outputs.items():
                     produced = max(0, int(qty)) * level
                     city.inventory[good_name] = int(city.inventory.get(good_name, 0)) + produced
+                    output_total += produced
                 city.treasury -= max(0, int(recipe.upkeep)) * level
+                operating_value = max(
+                    0,
+                    (output_total * 6) - (input_total * 3) - (max(0, int(recipe.upkeep)) * level * 2),
+                )
+                dividend_pool = int(round(operating_value * DIVIDEND_POOL_FACTOR))
+                if dividend_pool > 0:
+                    city_pool = self.last_dividend_pools.setdefault(city_name, {})
+                    city_pool[building.id] = city_pool.get(building.id, 0) + dividend_pool
+                    city.treasury += max(0, dividend_pool // 6)
                 active_buildings += 1
         return active_buildings
 
@@ -542,13 +1039,418 @@ class PygameHanseApp:
     def _run_world_month_tick(self) -> Dict[str, int]:
         production_count = self._tick_world_production()
         npc_trade_count = self._tick_world_npcs()
+        bankrupt_count = sum(1 for city_name in CITIES if self._city_is_bankrupt(city_name))
         # NPCs handeln vor dem Spieler. Danach bleiben Preise fuer den Monat gecached stabil.
         self.market_cache.clear()
         self.last_world_tick = {
             "producing_buildings": production_count,
             "npc_trades": npc_trade_count,
+            "cities_bankrupt": bankrupt_count,
         }
         return dict(self.last_world_tick)
+
+    def _can_building_run(self, city: CityEconomy, building: Building) -> bool:
+        recipe = PRODUCTION_RECIPES.get(building.id)
+        if recipe is None or not building.active:
+            return False
+        if RECIPE_UNLOCK_CENTURY.get(building.id, 14) > self.current_century:
+            return False
+        level = max(1, int(building.level))
+        for good_name, qty in recipe.inputs.items():
+            required = max(0, int(qty)) * level
+            if city.inventory.get(good_name, 0) < required:
+                return False
+        return True
+
+    def _complete_mission_reward(
+        self,
+        mission_key: str,
+        *,
+        reward_money: int,
+        reward_rep: int,
+        text: str,
+    ) -> None:
+        if self.player is None:
+            return
+        mission = self.player.missions.get(mission_key, {})
+        if mission.get("state") == "completed":
+            return
+        mission["state"] = "completed"
+        if reward_money > 0:
+            self.player.money += reward_money
+        if reward_rep > 0:
+            self.player.reputation = min(200, self.player.reputation + reward_rep)
+        self._log(text)
+        self.player.chronicle.append(f"ANNO {self.current_year}: {text}")
+
+    def _building_recipe_ids_for_good(self, good_name: str) -> List[str]:
+        recipe_ids: List[str] = []
+        for recipe_id, recipe in PRODUCTION_RECIPES.items():
+            if good_name in recipe.outputs:
+                recipe_ids.append(recipe_id)
+        return sorted(
+            recipe_ids,
+            key=lambda rid: (RECIPE_UNLOCK_CENTURY.get(rid, 14), PRODUCTION_RECIPES[rid].name),
+        )
+
+    def _building_quest_base_target(self, recipe_id: str) -> int:
+        recipe = PRODUCTION_RECIPES.get(recipe_id)
+        if recipe is None or not recipe.outputs:
+            return 40
+        first_qty = max(1, int(next(iter(recipe.outputs.values()))))
+        return max(40, first_qty * BUILDING_QUEST_BASE_MULT)
+
+    def _building_quest_target(self, recipe_id: str, tier: int) -> int:
+        tier_i = max(1, int(tier) + 1)
+        return self._building_quest_base_target(recipe_id) * tier_i
+
+    def _init_building_quests(self) -> None:
+        if self.player is None:
+            return
+        mission = self.player.missions.setdefault("building_quests", {})
+        for recipe_id in PRODUCTION_RECIPES:
+            entry = mission.get(recipe_id)
+            if not isinstance(entry, dict):
+                entry = {"tier": 0, "progress": 0}
+            tier = max(0, int(entry.get("tier", 0)))
+            progress = max(0, int(entry.get("progress", 0)))
+            unlock_century = RECIPE_UNLOCK_CENTURY.get(recipe_id, 14)
+            if tier >= BUILDING_QUEST_TIERS:
+                state = "completed"
+                tier = BUILDING_QUEST_TIERS
+                progress = 0
+            elif self.current_century < unlock_century:
+                state = "locked"
+            else:
+                state = "active"
+            mission[recipe_id] = {
+                "tier": tier,
+                "progress": progress,
+                "state": state,
+            }
+
+    def _record_building_quest_trade(self, good: str, qty: int) -> None:
+        if self.player is None or qty <= 0:
+            return
+        quests = self.player.missions.setdefault("building_quests", {})
+        for recipe_id in self._building_recipe_ids_for_good(good):
+            if RECIPE_UNLOCK_CENTURY.get(recipe_id, 14) > self.current_century:
+                continue
+            recipe = PRODUCTION_RECIPES.get(recipe_id)
+            if recipe is None:
+                continue
+            entry = quests.get(recipe_id)
+            if not isinstance(entry, dict):
+                entry = {"tier": 0, "progress": 0, "state": "active"}
+            tier = max(0, int(entry.get("tier", 0)))
+            progress = max(0, int(entry.get("progress", 0)))
+            if tier >= BUILDING_QUEST_TIERS:
+                quests[recipe_id] = {"tier": BUILDING_QUEST_TIERS, "progress": 0, "state": "completed"}
+                continue
+
+            progress += qty
+            while tier < BUILDING_QUEST_TIERS:
+                target = self._building_quest_target(recipe_id, tier)
+                if progress < target:
+                    break
+                progress -= target
+                tier += 1
+                reward_money = 350 + tier * 180 + self._building_quest_base_target(recipe_id) // 2
+                reward_rep = 1 if tier % 2 == 0 else 0
+                self.player.money += reward_money
+                if reward_rep > 0:
+                    self.player.reputation = min(200, self.player.reputation + reward_rep)
+                self._log(
+                    f"Betriebsquest [{recipe.name}] Stufe {tier}/{BUILDING_QUEST_TIERS} "
+                    f"(+{reward_money} Mark{', +1 Ruf' if reward_rep else ''})."
+                )
+                self.player.chronicle.append(
+                    f"ANNO {self.current_year}: Betriebsquest {recipe.name} Stufe {tier} abgeschlossen."
+                )
+
+            state = "completed" if tier >= BUILDING_QUEST_TIERS else "active"
+            quests[recipe_id] = {"tier": tier, "progress": progress, "state": state}
+
+    def _record_trade_for_missions(self, good: str, qty: int) -> None:
+        if self.player is None or qty <= 0:
+            return
+
+        if good == "Bier":
+            mission = self.player.missions.setdefault(
+                "brewmaster",
+                {"state": "active", "target": QUEST_BREWMASTER_TARGET, "delivered": 0, "next_log": 40},
+            )
+            if mission.get("state") != "completed":
+                delivered = int(mission.get("delivered", 0)) + qty
+                target = int(mission.get("target", QUEST_BREWMASTER_TARGET))
+                mission["delivered"] = delivered
+                next_log = int(mission.get("next_log", 40))
+                if delivered >= next_log and delivered < target:
+                    self._log(f"Braumeisterbund: {min(delivered, target)}/{target} Bier.")
+                    mission["next_log"] = next_log + 40
+                if delivered >= target:
+                    self._complete_mission_reward(
+                        "brewmaster",
+                        reward_money=1800,
+                        reward_rep=3,
+                        text="Mission erfuellt: Braumeisterbund (+1800 Mark, +3 Ruf).",
+                    )
+
+        if good == "Holz":
+            mission = self.player.missions.setdefault(
+                "timber_trade",
+                {"state": "active", "target": QUEST_TIMBER_TARGET, "delivered": 0, "next_log": 60},
+            )
+            if mission.get("state") != "completed":
+                delivered = int(mission.get("delivered", 0)) + qty
+                target = int(mission.get("target", QUEST_TIMBER_TARGET))
+                mission["delivered"] = delivered
+                next_log = int(mission.get("next_log", 60))
+                if delivered >= next_log and delivered < target:
+                    self._log(f"Nordholz-Vertrag: {min(delivered, target)}/{target} Holz.")
+                    mission["next_log"] = next_log + 60
+                if delivered >= target:
+                    self._complete_mission_reward(
+                        "timber_trade",
+                        reward_money=1600,
+                        reward_rep=2,
+                        text="Mission erfuellt: Nordholz-Vertrag (+1600 Mark, +2 Ruf).",
+                    )
+
+        self._record_building_quest_trade(good, qty)
+
+    def _record_city_visit(self, city: str) -> None:
+        if self.player is None:
+            return
+        mission = self.player.missions.setdefault(
+            "route_master",
+            {"state": "active", "target": QUEST_ROUTE_MASTER_TARGET_CITIES, "visited": [self.player.city]},
+        )
+        visited_raw = mission.get("visited", [])
+        visited = [str(city_name) for city_name in visited_raw if isinstance(city_name, str)]
+        if city not in visited:
+            visited.append(city)
+            mission["visited"] = visited
+        self._update_route_master()
+
+    def _update_route_master(self) -> None:
+        if self.player is None:
+            return
+        mission = self.player.missions.setdefault(
+            "route_master",
+            {"state": "active", "target": QUEST_ROUTE_MASTER_TARGET_CITIES, "visited": [self.player.city]},
+        )
+        if mission.get("state") == "completed":
+            return
+        visited = [str(city_name) for city_name in mission.get("visited", []) if isinstance(city_name, str)]
+        if self.player.city not in visited:
+            visited.append(self.player.city)
+        mission["visited"] = visited
+        target = int(mission.get("target", QUEST_ROUTE_MASTER_TARGET_CITIES))
+        if len(visited) >= target:
+            self._complete_mission_reward(
+                "route_master",
+                reward_money=1200,
+                reward_rep=2,
+                text="Mission erfuellt: Routenmeister (+1200 Mark, +2 Ruf).",
+            )
+
+    def _update_arms_race(self) -> None:
+        if self.player is None:
+            return
+        mission = self.player.missions.setdefault(
+            "arms_race",
+            {
+                "state": "active",
+                "target_cannons": QUEST_ARMS_RACE_TARGET_CANNONS,
+                "target_ships": QUEST_ARMS_RACE_TARGET_SHIPS,
+            },
+        )
+        if mission.get("state") == "completed":
+            return
+        target_cannons = int(mission.get("target_cannons", QUEST_ARMS_RACE_TARGET_CANNONS))
+        target_ships = int(mission.get("target_ships", QUEST_ARMS_RACE_TARGET_SHIPS))
+        cannons = sum(ship.cannons for ship in self.player.ships)
+        ships_count = len(self.player.ships)
+        if ships_count >= target_ships and cannons >= target_cannons:
+            self._complete_mission_reward(
+                "arms_race",
+                reward_money=2200,
+                reward_rep=4,
+                text="Mission erfuellt: Arsenal der Hanse (+2200 Mark, +4 Ruf).",
+            )
+
+    def _preferred_export_dir(self) -> Path:
+        fallback = self.save_dir / "exports"
+        if not self.is_android:
+            return fallback
+
+        candidates: List[Path] = []
+        env_download = os.getenv("DOWNLOAD_DIR", "").strip()
+        if env_download:
+            candidates.append(Path(env_download))
+        external_storage = os.getenv("EXTERNAL_STORAGE", "").strip()
+        if external_storage:
+            candidates.append(Path(external_storage) / "Download")
+        candidates.extend(
+            [
+                Path("/storage/emulated/0/Download"),
+                Path("/storage/self/primary/Download"),
+                Path("/sdcard/Download"),
+            ]
+        )
+
+        seen: set[str] = set()
+        for candidate in candidates:
+            key = str(candidate)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                return candidate
+            except OSError:
+                continue
+        return Path("/storage/emulated/0/Download")
+
+    def _export_csv_report(self) -> Path | None:
+        if self.player is None:
+            return None
+        self._ensure_world_state()
+        export_dir = self._preferred_export_dir()
+        try:
+            export_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = export_dir / f"hanse_report_{self.current_year}_{self.current_month:02d}_{stamp}.csv"
+            headers = ["section", "entity", "subentity", "key", "value", "unit", "note"]
+            with path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle, delimiter=";")
+                writer.writerow(headers)
+
+                def row(
+                    section: str,
+                    entity: str,
+                    subentity: str,
+                    key: str,
+                    value: object,
+                    unit: str = "",
+                    note: str = "",
+                ) -> None:
+                    writer.writerow([section, entity, subentity, key, value, unit, note])
+
+                row("snapshot", "game", "", "year", self.current_year)
+                row("snapshot", "game", "", "month", self.current_month)
+                row("snapshot", "game", "", "sea_state", self.current_sea_state)
+                row("atheria", "macro", "", "global_growth", f"{self.economy_state.global_growth:.4f}")
+                row("atheria", "macro", "", "global_price_level", f"{self.economy_state.global_price_level:.4f}")
+                row("atheria", "macro", "", "resource_scarcity", f"{self.economy_state.resource_scarcity:.4f}")
+
+                for city_name in CITIES:
+                    city = self._city_economy(city_name)
+                    row("city", city_name, "", "treasury", city.treasury, "Mark")
+                    row("city", city_name, "", "bankrupt", int(self._city_is_bankrupt(city_name)))
+                    row("city", city_name, "", "building_count", len(city.buildings), "count")
+                    prices = self._market_prices(city_name)
+                    for good_name in self._active_good_names():
+                        row("city_inventory", city_name, good_name, "stock", city.inventory.get(good_name, 0), "units")
+                        row(
+                            "city_inventory",
+                            city_name,
+                            good_name,
+                            "scarcity_factor",
+                            f"{city.scarcity_factor(good_name):.4f}",
+                        )
+                        row("city_inventory", city_name, good_name, "market_price", prices.get(good_name, 0), "Mark")
+                    for idx, building in enumerate(city.buildings, start=1):
+                        recipe = PRODUCTION_RECIPES.get(building.id)
+                        recipe_name = recipe.name if recipe else building.id
+                        row("building", city_name, f"{idx}", "id", building.id)
+                        row("building", city_name, f"{idx}", "name", recipe_name)
+                        row("building", city_name, f"{idx}", "level", max(1, int(building.level)))
+                        row("building", city_name, f"{idx}", "active", int(bool(building.active)))
+                        row("building", city_name, f"{idx}", "can_run_now", int(self._can_building_run(city, building)))
+                        if recipe:
+                            row("building", city_name, f"{idx}", "inputs", json.dumps(recipe.inputs, ensure_ascii=False))
+                            row("building", city_name, f"{idx}", "outputs", json.dumps(recipe.outputs, ensure_ascii=False))
+
+                for npc in self.npcs:
+                    row("npc", npc.name, "", "city", npc.city)
+                    row("npc", npc.name, "", "money", npc.money, "Mark")
+                    row("npc", npc.name, "", "ship", npc.ship.display_name)
+                    row("npc", npc.name, "", "cargo_total", npc.ship.total_cargo, "units")
+                    for good_name in self._active_good_names():
+                        qty = npc.ship.cargo.get(good_name, 0)
+                        if qty > 0:
+                            row("npc_cargo", npc.name, good_name, "qty", qty, "units")
+
+                prices = self._market_prices(self.player.city)
+                row("player", self.player.name, "", "city", self.player.city)
+                row("player", self.player.name, "", "money", self.player.money, "Mark")
+                row("player", self.player.name, "", "debt", self.player.debt, "Mark")
+                row("player", self.player.name, "", "reputation", self.player.reputation)
+                row("player", self.player.name, "", "age", self.player.age, "years")
+                row("player", self.player.name, "", "net_worth", self._net_worth(self.player, prices), "Mark")
+                for city_name, score in self.player.city_influence.items():
+                    row("player_influence", self.player.name, city_name, "score", f"{float(score):.2f}")
+                for mission_key, mission_data in self.player.missions.items():
+                    state = mission_data.get("state", "inactive") if isinstance(mission_data, dict) else "inactive"
+                    row("player_mission", self.player.name, mission_key, "state", state)
+                for city_name, share_map in self.player.building_shares.items():
+                    if not isinstance(share_map, dict):
+                        continue
+                    for recipe_id, share_pct in share_map.items():
+                        recipe = PRODUCTION_RECIPES.get(recipe_id)
+                        row(
+                            "player_share",
+                            self.player.name,
+                            f"{city_name}:{recipe_id}",
+                            "share_pct",
+                            f"{float(share_pct):.2f}",
+                            "%",
+                            recipe.name if recipe else recipe_id,
+                        )
+                building_quests = self.player.missions.get("building_quests", {})
+                if isinstance(building_quests, dict):
+                    for recipe_id, quest_data in building_quests.items():
+                        if not isinstance(quest_data, dict):
+                            continue
+                        recipe = PRODUCTION_RECIPES.get(recipe_id)
+                        recipe_name = recipe.name if recipe else recipe_id
+                        row("player_building_quest", self.player.name, recipe_id, "recipe_name", recipe_name)
+                        row(
+                            "player_building_quest",
+                            self.player.name,
+                            recipe_id,
+                            "tier",
+                            max(0, int(quest_data.get("tier", 0))),
+                            "of_8",
+                        )
+                        row(
+                            "player_building_quest",
+                            self.player.name,
+                            recipe_id,
+                            "progress",
+                            max(0, int(quest_data.get("progress", 0))),
+                            "units",
+                        )
+                        row(
+                            "player_building_quest",
+                            self.player.name,
+                            recipe_id,
+                            "state",
+                            str(quest_data.get("state", "inactive")),
+                        )
+                for idx, ship in enumerate(self.player.ships, start=1):
+                    row("player_ship", self.player.name, f"{idx}", "name", ship.display_name)
+                    row("player_ship", self.player.name, f"{idx}", "city", ship.city)
+                    row("player_ship", self.player.name, f"{idx}", "cargo_capacity", ship.cargo_capacity, "units")
+                    row("player_ship", self.player.name, f"{idx}", "cargo_total", ship.total_cargo, "units")
+                    row("player_ship", self.player.name, f"{idx}", "hull", ship.hull, "%")
+                    row("player_ship", self.player.name, f"{idx}", "rigging", ship.rigging, "%")
+                    row("player_ship", self.player.name, f"{idx}", "cannons", ship.cannons, "count")
+            return path
+        except OSError:
+            return None
 
     def _ensure_runtime_state(self) -> None:
         runtime_defaults = {
@@ -562,14 +1464,27 @@ class PygameHanseApp:
             "selected_ship_type": 0,
             "selected_fleet_ship": 0,
             "selected_dest": 0,
+            "selected_weapon_century": year_to_century(self.current_year),
+            "editor_weapon_offset": 0,
+            "info_scroll": 0,
+            "info_max_scroll": 0,
             "info_open": False,
+            "selected_city_building_recipe": "",
             "auto_popup_hold_until": 0,
             "auto_last_ship_build_month": -9999,
-            "last_world_tick": {"producing_buildings": 0, "npc_trades": 0},
+            "last_world_tick": {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0},
+            "last_dividend_pools": {},
         }
         for key, value in runtime_defaults.items():
             if not hasattr(self, key):
                 setattr(self, key, value)
+        if not hasattr(self, "editor_weapon_rows") or not isinstance(self.editor_weapon_rows, list):
+            self.editor_weapon_rows = []
+        if not hasattr(self, "editor_weapon_list_rect"):
+            self.editor_weapon_list_rect = None
+        self.info_scroll = max(0, int(getattr(self, "info_scroll", 0)))
+        self.info_max_scroll = max(0, int(getattr(self, "info_max_scroll", 0)))
+        self.info_scroll = min(self.info_scroll, self.info_max_scroll)
         if not hasattr(self, "world_economy") or not isinstance(self.world_economy, WorldEconomy):
             self.world_economy = WorldEconomy()
         if not hasattr(self, "npcs") or not isinstance(self.npcs, list):
@@ -577,9 +1492,14 @@ class PygameHanseApp:
         self._ensure_world_state()
         if not hasattr(self, "current_century"):
             self.current_century = year_to_century(self.current_year)
+        self._normalize_selected_weapon_century()
         if self.player is not None:
             if not hasattr(self.player, "missions") or not isinstance(self.player.missions, dict):
                 self.player.missions = {}
+            if not hasattr(self.player, "building_shares") or not isinstance(self.player.building_shares, dict):
+                self.player.building_shares = {}
+            if not hasattr(self.player, "city_influence") or not isinstance(self.player.city_influence, dict):
+                self.player.city_influence = {}
             if not hasattr(self.player, "married"):
                 self.player.married = False
             if not hasattr(self.player, "spouse_name"):
@@ -605,6 +1525,8 @@ class PygameHanseApp:
                     ship.cargo = {}
                 if not hasattr(ship, "cannons"):
                     ship.cannons = 0
+                if not hasattr(ship, "cannon_inventory") or not isinstance(ship.cannon_inventory, dict):
+                    ship.cannon_inventory = {}
                 if not hasattr(ship, "is_at_sea"):
                     ship.is_at_sea = False
                 if not hasattr(ship, "destination"):
@@ -630,6 +1552,10 @@ class PygameHanseApp:
             "world_economy": self.world_economy.to_dict(),
             "npcs": [npc.to_dict() for npc in self.npcs],
             "last_world_tick": dict(self.last_world_tick),
+            "last_dividend_pools": {
+                city_name: {recipe_id: int(value) for recipe_id, value in pool.items()}
+                for city_name, pool in self.last_dividend_pools.items()
+            },
             "market_cache": {key: dict(value) for key, value in self.market_cache.items()},
             "current_century": self.current_century,
             "preview_destination": self.preview_destination,
@@ -638,6 +1564,7 @@ class PygameHanseApp:
             "selected_ship_type": self.selected_ship_type,
             "selected_fleet_ship": self.selected_fleet_ship,
             "fleet_scroll": self.fleet_scroll,
+            "selected_weapon_century": self.selected_weapon_century,
         }
 
     def _restore_game_state(self, snapshot: Dict[str, object] | None) -> None:
@@ -667,9 +1594,24 @@ class PygameHanseApp:
             self.last_world_tick = {
                 "producing_buildings": int(last_world_tick.get("producing_buildings", 0)),
                 "npc_trades": int(last_world_tick.get("npc_trades", 0)),
+                "cities_bankrupt": int(last_world_tick.get("cities_bankrupt", 0)),
             }
         else:
-            self.last_world_tick = {"producing_buildings": 0, "npc_trades": 0}
+            self.last_world_tick = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
+        dividend_data = snapshot.get("last_dividend_pools")
+        self.last_dividend_pools = {}
+        if isinstance(dividend_data, dict):
+            for raw_city, raw_pool in dividend_data.items():
+                if not isinstance(raw_pool, dict):
+                    continue
+                city_name = str(raw_city)
+                pool: Dict[str, int] = {}
+                for raw_recipe, raw_value in raw_pool.items():
+                    try:
+                        pool[str(raw_recipe)] = max(0, int(raw_value))
+                    except (TypeError, ValueError):
+                        continue
+                self.last_dividend_pools[city_name] = pool
         market_cache = snapshot.get("market_cache")
         if isinstance(market_cache, dict):
             self.market_cache = {}
@@ -685,6 +1627,7 @@ class PygameHanseApp:
         self.selected_ship_type = int(snapshot.get("selected_ship_type", 0))
         self.selected_fleet_ship = int(snapshot.get("selected_fleet_ship", 0))
         self.fleet_scroll = int(snapshot.get("fleet_scroll", 0))
+        self.selected_weapon_century = int(snapshot.get("selected_weapon_century", self.current_century))
         self._ensure_world_state()
         self._ensure_runtime_state()
         self._sync_century_content(announce=False)
@@ -700,6 +1643,9 @@ class PygameHanseApp:
 
     def _shipyard_visible_count(self) -> int:
         return 3
+
+    def _editor_weapon_visible_count(self) -> int:
+        return 5
 
     def _max_market_goods_offset(self) -> int:
         return max(0, len(self._active_good_names()) - self._market_visible_count())
@@ -730,7 +1676,34 @@ class PygameHanseApp:
                     ship.locked_qty.setdefault(good_name, 0)
                 ship.locked_qty = {good: qty for good, qty in ship.locked_qty.items() if qty > 0}
                 ship.locked_prices = {good: price for good, price in ship.locked_prices.items() if good in goods}
-                ship.cannons = min(ship.cannons, self._max_cannons(ship))
+                raw_inventory = getattr(ship, "cannon_inventory", {})
+                cleaned_inventory: Dict[str, int] = {}
+                if isinstance(raw_inventory, dict):
+                    for raw_century, raw_qty in raw_inventory.items():
+                        try:
+                            century_key = str(max(14, int(raw_century)))
+                            qty_i = max(0, int(raw_qty))
+                        except (TypeError, ValueError):
+                            continue
+                        if qty_i > 0:
+                            cleaned_inventory[century_key] = cleaned_inventory.get(century_key, 0) + qty_i
+                ship.cannon_inventory = cleaned_inventory
+                inventory_total = sum(cleaned_inventory.values())
+                if inventory_total > 0:
+                    ship.cannons = inventory_total
+                max_cannons = self._max_cannons(ship)
+                ship.cannons = min(ship.cannons, max_cannons)
+                overflow = sum(ship.cannon_inventory.values()) - ship.cannons
+                if overflow > 0:
+                    # Bei Reduktion zunaechst neuere Tier-Kanonen entfernen.
+                    for century_key in sorted(ship.cannon_inventory.keys(), key=int, reverse=True):
+                        if overflow <= 0:
+                            break
+                        take = min(overflow, ship.cannon_inventory[century_key])
+                        ship.cannon_inventory[century_key] -= take
+                        overflow -= take
+                        if ship.cannon_inventory[century_key] <= 0:
+                            ship.cannon_inventory.pop(century_key, None)
             self.selected_good = max(0, min(self.selected_good, max(0, len(goods) - 1)))
             shipyard = self._active_shipyard()
             self.selected_ship_type = max(0, min(self.selected_ship_type, max(0, len(shipyard) - 1)))
@@ -757,6 +1730,7 @@ class PygameHanseApp:
             if self.player is not None:
                 self.player.chronicle.append(f"ANNO {self.current_year}: Jahrhundert {century} erreicht.")
         self.current_century = century
+        self._normalize_selected_weapon_century()
 
     def _update_display_scale(self) -> None:
         win_w = max(1, self.window.get_width())
@@ -934,6 +1908,8 @@ class PygameHanseApp:
             if self.info_open:
                 if is_back or event.key in {pygame.K_RETURN, pygame.K_i}:
                     self.info_open = False
+                    self.info_scroll = 0
+                    self.info_max_scroll = 0
                 return
             if self.ship_editor_open and self.ship_name_active:
                 if is_back:
@@ -973,6 +1949,8 @@ class PygameHanseApp:
                     return
                 if self.info_open:
                     self.info_open = False
+                    self.info_scroll = 0
+                    self.info_max_scroll = 0
                     return
             if event.unicode == "|":
                 self.cheat_open = True
@@ -986,6 +1964,12 @@ class PygameHanseApp:
                 self._save_slot(self.selected_slot)
             elif event.key == pygame.K_F9:
                 self._load_slot(self.selected_slot)
+            elif event.key == pygame.K_F6:
+                path = self._export_csv_report()
+                if path:
+                    self._log(f"CSV exportiert: {path}")
+                else:
+                    self._log("CSV-Export fehlgeschlagen.")
 
     def _handle_click(self, pos: Tuple[int, int]) -> None:
         if self.scene == "menu":
@@ -1126,7 +2110,16 @@ class PygameHanseApp:
                     min(self._max_transfer_goods_offset(), self.transfer_goods_offset - event.y),
                 )
             return
-        if self.ship_editor_open or self.missions_open or self.info_open:
+        if self.ship_editor_open:
+            if self.editor_weapon_list_rect and self.editor_weapon_list_rect.collidepoint(mouse):
+                max_offset = max(0, len(self._available_weapon_centuries()) - self._editor_weapon_visible_count())
+                self.editor_weapon_offset = max(0, min(max_offset, self.editor_weapon_offset - event.y))
+            return
+        if self.info_open:
+            step = 34
+            self.info_scroll = max(0, min(self.info_max_scroll, self.info_scroll - event.y * step))
+            return
+        if self.missions_open:
             return
         if self.city_market_open:
             prices_list = pygame.Rect(430, 200, 700, self._city_market_visible_count() * 42)
@@ -1181,6 +2174,14 @@ class PygameHanseApp:
             self.missions_open = True
         elif key == "game_info":
             self.info_open = True
+            self.info_scroll = 0
+            self.info_max_scroll = 0
+        elif key == "game_export":
+            path = self._export_csv_report()
+            if path:
+                self._log(f"CSV exportiert: {path}")
+            else:
+                self._log("CSV-Export fehlgeschlagen.")
         elif key == "game_repair_hull":
             self._repair("hull")
         elif key == "game_repair_rig":
@@ -1217,6 +2218,8 @@ class PygameHanseApp:
             self.city_market_open = False
             self.missions_open = False
             self.info_open = False
+            self.info_scroll = 0
+            self.info_max_scroll = 0
             self.market_goods_offset = 0
             self.transfer_goods_offset = 0
             self.city_goods_offset = 0
@@ -1246,6 +2249,8 @@ class PygameHanseApp:
             self.city_market_open = False
             self.missions_open = False
             self.info_open = False
+            self.info_scroll = 0
+            self.info_max_scroll = 0
             self.save_menu_open = False
             self.save_menu_mode = None
             self.cheat_open = False
@@ -1517,6 +2522,7 @@ class PygameHanseApp:
             self._city_add_inventory(city, good_name, qty)
             self.player.money += revenue
             self._record_hanse_delivery(city, good_name, qty)
+            self._record_trade_for_missions(good_name, qty)
             total_revenue += revenue
             sold_goods += 1
         if sold_goods > 0:
@@ -1728,7 +2734,7 @@ class PygameHanseApp:
     def _ship_sale_price(self, ship: Ship) -> int:
         condition = max(0.20, min(1.0, (ship.hull + ship.rigging) / 200.0))
         hull_value = int(ship.value * (0.32 + 0.38 * condition))
-        cannon_value = int(ship.cannons * 0.35 * self._active_cannon_cost())
+        cannon_value = int(ship.cannons * 0.35 * self._ship_cannon_avg_cost(ship))
         return max(100, hull_value + cannon_value)
 
     def _sell_selected_ship(self) -> None:
@@ -1798,6 +2804,32 @@ class PygameHanseApp:
         missions.setdefault("fleet_synergy", {"state": "inactive"})
         missions.setdefault("atheria_resonance", {"state": "inactive"})
         missions.setdefault("family_dynasty", {"state": "inactive"})
+        missions.setdefault(
+            "brewmaster",
+            {"state": "active", "target": QUEST_BREWMASTER_TARGET, "delivered": 0, "next_log": 40},
+        )
+        missions.setdefault(
+            "timber_trade",
+            {"state": "active", "target": QUEST_TIMBER_TARGET, "delivered": 0, "next_log": 60},
+        )
+        route_mission = missions.setdefault(
+            "route_master",
+            {"state": "active", "target": QUEST_ROUTE_MASTER_TARGET_CITIES, "visited": [self.player.city]},
+        )
+        visited_raw = route_mission.get("visited", [])
+        visited = [str(city_name) for city_name in visited_raw if isinstance(city_name, str)]
+        if self.player.city not in visited:
+            visited.append(self.player.city)
+        route_mission["visited"] = visited
+        missions.setdefault(
+            "arms_race",
+            {
+                "state": "active",
+                "target_cannons": QUEST_ARMS_RACE_TARGET_CANNONS,
+                "target_ships": QUEST_ARMS_RACE_TARGET_SHIPS,
+            },
+        )
+        self._init_building_quests()
 
     def _month_index(self) -> int:
         return (self.current_year - STARTING_YEAR) * 12 + (self.current_month - 1)
@@ -1819,6 +2851,8 @@ class PygameHanseApp:
         self._update_fleet_synergy()
         self._update_atheria_resonance()
         self._update_family_dynasty()
+        self._update_route_master()
+        self._update_arms_race()
 
     def _update_hanse_privileg(self, month_index: int) -> None:
         if self.player is None:
@@ -2073,6 +3107,10 @@ class PygameHanseApp:
         self.ship_editor_open = True
         self.ship_name_active = False
         self.ship_name_edit = ship.custom_name
+        self.selected_weapon_century = self.current_century
+        self.editor_weapon_offset = 0
+        self.editor_weapon_rows = []
+        self.editor_weapon_list_rect = None
 
     def _handle_ship_cargo_click(self, pos: Tuple[int, int]) -> None:
         ship = self._selected_ship()
@@ -2110,21 +3148,40 @@ class PygameHanseApp:
             if not self.ship_name_edit:
                 self.ship_name_edit = ship.custom_name or ship.display_name
             return
+        for century_i, row in self.editor_weapon_rows:
+            if row.collidepoint(pos):
+                self.selected_weapon_century = century_i
+                return
         button = self._clicked_button(pos)
         if button == "editor_save":
             self._submit_ship_name()
             return
+        if button == "editor_weapon_prev":
+            self._shift_selected_weapon_century(-1)
+            return
+        if button == "editor_weapon_next":
+            self._shift_selected_weapon_century(1)
+            return
+        if button == "editor_tier_up":
+            self.editor_weapon_offset = max(0, self.editor_weapon_offset - 1)
+            return
+        if button == "editor_tier_down":
+            max_offset = max(0, len(self._available_weapon_centuries()) - self._editor_weapon_visible_count())
+            self.editor_weapon_offset = min(max_offset, self.editor_weapon_offset + 1)
+            return
         if button == "editor_cannon_1":
-            self._buy_cannons(ship, 1)
+            self._buy_cannons(ship, 1, weapon_century=self._normalize_selected_weapon_century())
             return
         if button == "editor_cannon_5":
-            self._buy_cannons(ship, 5)
+            self._buy_cannons(ship, 5, weapon_century=self._normalize_selected_weapon_century())
             return
         if button == "editor_close":
             self.ship_editor_open = False
             self.ship_name_active = False
             self.ship_name_edit = ""
             self.ship_name_input_rect = None
+            self.editor_weapon_rows = []
+            self.editor_weapon_list_rect = None
             return
 
     def _update_transfer_drag(self, mouse_x: int, rect: pygame.Rect, max_unload: int, max_load: int) -> None:
@@ -2208,7 +3265,7 @@ class PygameHanseApp:
         self.ship_name_edit = ""
         self._log(f"Schiffsname gesetzt: {ship.display_name}")
 
-    def _buy_cannons(self, ship: Ship, qty: int) -> None:
+    def _buy_cannons(self, ship: Ship, qty: int, weapon_century: int | None = None) -> None:
         if self.player is None:
             return
         qty = max(0, int(qty))
@@ -2226,15 +3283,23 @@ class PygameHanseApp:
             self._log(f"Maximale Bewaffnung erreicht ({max_cannons}).")
             return
         qty = min(qty, possible)
-        cost_per_cannon = self._active_cannon_cost()
+        if weapon_century is None:
+            weapon_century = self.current_century
+        weapon_century = max(14, min(self.current_century, int(weapon_century)))
+        profile = weapon_profile_for_century(weapon_century)
+        cost_per_cannon = int(profile.get("cannon_cost", CANNON_COST))
         cost = cost_per_cannon * qty
         if self.player.money < cost:
             self._log("Nicht genug Mark fuer Kanonen.")
             return
         self.player.money -= cost
         ship.cannons += qty
+        if not hasattr(ship, "cannon_inventory") or not isinstance(ship.cannon_inventory, dict):
+            ship.cannon_inventory = {}
+        key = str(weapon_century)
+        ship.cannon_inventory[key] = max(0, int(ship.cannon_inventory.get(key, 0))) + qty
         self._log(
-            f"{qty} Kanone(n) ({self._active_weapon_profile().get('name', 'Standard')}) "
+            f"{qty} Kanone(n) ({profile.get('name', 'Standard')}, C{weapon_century}) "
             f"gekauft fuer {cost} Mark."
         )
 
@@ -2438,6 +3503,12 @@ class PygameHanseApp:
         button = self._clicked_button(pos)
         if button == "info_close":
             self.info_open = False
+            self.info_scroll = 0
+            self.info_max_scroll = 0
+        elif button == "info_up":
+            self.info_scroll = max(0, self.info_scroll - 40)
+        elif button == "info_down":
+            self.info_scroll = min(self.info_max_scroll, self.info_scroll + 40)
 
     def _draw(self) -> None:
         self.button_states.clear()
@@ -2486,7 +3557,7 @@ class PygameHanseApp:
         self._draw_button("menu_load", pygame.Rect(980, 274, 290, 66), "Slot laden", True)
         self._draw_button("menu_quit", pygame.Rect(980, 358, 290, 66), "Beenden", True)
         self._draw_text(
-            "Hinweis: F5/F9 im Spiel speichern/laden den gewaehlten Slot.",
+            "Hinweis: F5 Speichern | F9 Laden | F6 CSV-Export.",
             self.font_small,
             TEXT_DIM,
             (980, 470),
@@ -2611,7 +3682,9 @@ class PygameHanseApp:
         )
         self._draw_text(
             f"Welt: Betriebe {self.last_world_tick.get('producing_buildings', 0)} | "
-            f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)}/{len(self.npcs)}",
+            f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)}/{len(self.npcs)} | "
+            f"Bankrott {self.last_world_tick.get('cities_bankrupt', 0)} | "
+            f"Einfluss {self._player_city_influence(player.city):.1f}",
             self.font_small,
             TEXT_DIM,
             (310, 122),
@@ -2637,6 +3710,7 @@ class PygameHanseApp:
         fleet_can_scroll = self._fleet_max_scroll() > 0
         self._draw_button("game_fleet_up", pygame.Rect(fleet_panel.right - 78, 176, 34, 28), "^", fleet_can_scroll)
         self._draw_button("game_fleet_down", pygame.Rect(fleet_panel.right - 40, 176, 34, 28), "v", fleet_can_scroll)
+        self._draw_button("game_export", pygame.Rect(log_panel.right - 362, log_panel.y + 6, 102, 36), "CSV Export", True)
         self._draw_button("game_info", pygame.Rect(log_panel.right - 252, log_panel.y + 6, 92, 36), "Info", True)
         self._draw_button("game_missions", pygame.Rect(log_panel.right - 150, log_panel.y + 6, 130, 36), "Missionen", True)
 
@@ -3097,7 +4171,7 @@ class PygameHanseApp:
         overlay.fill((8, 12, 20, 180))
         self.screen.blit(overlay, (0, 0))
 
-        panel = pygame.Rect(360, 240, 600, 320)
+        panel = pygame.Rect(240, 120, 840, 560)
         stripe = self._get_scaled("panel_stripe", (panel.width, panel.height))
         if stripe:
             self.screen.blit(stripe, (panel.x, panel.y))
@@ -3114,62 +4188,171 @@ class PygameHanseApp:
             f"{ship.display_name} ({ship.name}) | Ort: {ship.city}",
             self.font_small,
             TEXT_DIM,
-            (panel.x + 24, panel.y + 58),
+            (panel.x + 24, panel.y + 74),
         )
         self._draw_text(
             f"Rumpf {ship.hull}% / Takelage {ship.rigging}% | Kanonen {ship.cannons}",
             self.font_small,
             TEXT_DIM,
-            (panel.x + 24, panel.y + 82),
+            (panel.x + 24, panel.y + 100),
         )
-        weapon = self._active_weapon_profile()
+        selected_weapon_century = self._normalize_selected_weapon_century()
+        weapon = self._selected_weapon_profile()
         max_cannons = self._max_cannons(ship)
-        self._draw_text(
-            f"Waffenstufe: {weapon.get('name', 'Standard')} | Limit {max_cannons}",
-            self.font_small,
-            ACCENT_2,
-            (panel.x + 24, panel.y + 102),
-        )
 
-        self._draw_text("Name:", self.font_small, TEXT, (panel.x + 24, panel.y + 120))
-        input_box = pygame.Rect(panel.x + 24, panel.y + 146, panel.width - 48, 44)
+        self._draw_text("Name:", self.font_small, TEXT, (panel.x + 24, panel.y + 130))
+        input_box = pygame.Rect(panel.x + 24, panel.y + 156, panel.width - 48, 44)
         self.ship_name_input_rect = input_box
         pygame.draw.rect(self.screen, BG_PANEL_ALT, input_box, border_radius=8)
-        pygame.draw.rect(self.screen, ACCENT if self.ship_name_active else (60, 85, 122), input_box, width=2, border_radius=8)
+        pygame.draw.rect(
+            self.screen,
+            ACCENT if self.ship_name_active else (60, 85, 122),
+            input_box,
+            width=2,
+            border_radius=8,
+        )
         display_name = self.ship_name_edit if self.ship_name_active else (ship.custom_name or ship.display_name)
         self._draw_text(display_name or "_", self.font, TEXT, (input_box.x + 10, input_box.y + 10))
 
-        cannon_cost = self._active_cannon_cost()
+        self._draw_text("Kanonenstufe:", self.font_small, TEXT, (panel.x + 24, panel.y + 216))
+        selector_left = pygame.Rect(panel.x + 24, panel.y + 238, 34, 28)
+        selector_right = pygame.Rect(panel.x + panel.width - 58, panel.y + 238, 34, 28)
+        self._draw_button("editor_weapon_prev", selector_left, "<", selected_weapon_century > 14)
+        self._draw_button("editor_weapon_next", selector_right, ">", selected_weapon_century < self.current_century)
+        self._draw_text(
+            f"C{selected_weapon_century}: {weapon.get('name', 'Standard')}",
+            self.font,
+            ACCENT_2,
+            (panel.x + 72, panel.y + 240),
+        )
+        self._draw_text(
+            (
+                f"Limit {max_cannons} | Power x{float(weapon.get('cannon_power', 1.0)):.2f} | "
+                f"Kosten {int(weapon.get('cannon_cost', CANNON_COST))} Mark"
+            ),
+            self.font_small,
+            TEXT_DIM,
+            (panel.x + 72, panel.y + 268),
+        )
+
+        available_centuries = self._available_weapon_centuries()
+        selected_idx = available_centuries.index(selected_weapon_century)
+        visible_count = self._editor_weapon_visible_count()
+        max_offset = max(0, len(available_centuries) - visible_count)
+        self.editor_weapon_offset = max(0, min(max_offset, int(self.editor_weapon_offset)))
+        if selected_idx < self.editor_weapon_offset:
+            self.editor_weapon_offset = selected_idx
+        if selected_idx >= self.editor_weapon_offset + visible_count:
+            self.editor_weapon_offset = selected_idx - visible_count + 1
+
+        footer_rect = pygame.Rect(panel.x + 24, panel.bottom - 130, panel.width - 48, 58)
+        list_top = panel.y + 300
+        list_height = max(120, footer_rect.y - list_top - 10)
+        list_rect = pygame.Rect(panel.x + 24, list_top, panel.width - 48, list_height)
+        self.editor_weapon_list_rect = list_rect
+        pygame.draw.rect(self.screen, BG_PANEL_ALT, list_rect, border_radius=8)
+        pygame.draw.rect(self.screen, (60, 85, 122), list_rect, width=1, border_radius=8)
+        self._draw_button(
+            "editor_tier_up",
+            pygame.Rect(list_rect.right - 34, list_rect.y + 6, 24, 24),
+            "^",
+            self.editor_weapon_offset > 0,
+        )
+        self._draw_button(
+            "editor_tier_down",
+            pygame.Rect(list_rect.right - 34, list_rect.bottom - 30, 24, 24),
+            "v",
+            self.editor_weapon_offset < max_offset,
+        )
+
+        self.editor_weapon_rows = []
+        y = list_rect.y + 8
+        row_height = 32
+        visible_centuries = available_centuries[self.editor_weapon_offset : self.editor_weapon_offset + visible_count]
+        inventory = getattr(ship, "cannon_inventory", {})
+        for century_i in visible_centuries:
+            row = pygame.Rect(list_rect.x + 8, y, list_rect.width - 50, row_height)
+            is_selected = century_i == selected_weapon_century
+            pygame.draw.rect(self.screen, ROW_SELECTED if is_selected else BG_PANEL, row, border_radius=6)
+            pygame.draw.rect(self.screen, (60, 85, 122), row, width=1, border_radius=6)
+            profile = weapon_profile_for_century(century_i)
+            qty = 0
+            if isinstance(inventory, dict):
+                qty = max(0, int(inventory.get(str(century_i), 0)))
+            row_text = (
+                f"C{century_i} {profile.get('name', 'Kanonen')} | Bestand {qty:>2} | "
+                f"{int(profile.get('cannon_cost', CANNON_COST))} Mark | "
+                f"x{float(profile.get('cannon_power', 1.0)):.2f}"
+            )
+            self._draw_text(
+                self._shorten_text(row_text, 92),
+                self.font_small,
+                ACCENT_2 if is_selected else TEXT_DIM,
+                (row.x + 8, row.y + 8),
+            )
+            self.editor_weapon_rows.append((century_i, row))
+            y += row_height + 4
+
+        if len(available_centuries) > visible_count:
+            start = self.editor_weapon_offset + 1
+            end = min(len(available_centuries), self.editor_weapon_offset + visible_count)
+            self._draw_text(
+                f"Stufen {start}-{end}/{len(available_centuries)} (Mausrad / Buttons)",
+                self.font_small,
+                TEXT_DIM,
+                (list_rect.x + 8, list_rect.bottom - 22),
+            )
+
+        cannon_cost = int(weapon.get("cannon_cost", CANNON_COST))
         remaining_slots = max(0, max_cannons - ship.cannons)
         buy_1 = min(1, remaining_slots)
         buy_5 = min(5, remaining_slots)
         cannon_cost_1 = cannon_cost * buy_1
         cannon_cost_5 = cannon_cost * buy_5
-        icon = self._get_scaled("icon_cannon", (28, 28))
+        pygame.draw.rect(self.screen, BG_PANEL_ALT, footer_rect, border_radius=8)
+        pygame.draw.rect(self.screen, (60, 85, 122), footer_rect, width=1, border_radius=8)
+        icon = self._get_scaled("icon_cannon", (24, 24))
         if icon:
-            self.screen.blit(icon, (panel.x + 24, panel.y + 200))
-            self._draw_text(
-                f"Kanonen kosten {cannon_cost} Mark pro Stueck.",
-                self.font_small,
-                TEXT_DIM,
-                (panel.x + 60, panel.y + 204),
-            )
+            self.screen.blit(icon, (footer_rect.x + 8, footer_rect.y + 6))
+            text_x = footer_rect.x + 40
         else:
-            self._draw_text(
-                f"Kanonen kosten {cannon_cost} Mark pro Stueck.",
-                self.font_small,
-                TEXT_DIM,
-                (panel.x + 24, panel.y + 204),
-            )
+            text_x = footer_rect.x + 10
+        self._draw_text(
+            f"C{selected_weapon_century}: {cannon_cost} Mark pro Kanone.",
+            self.font_small,
+            TEXT_DIM,
+            (text_x, footer_rect.y + 8),
+        )
+
+        if isinstance(inventory, dict) and inventory:
+            tiers: List[str] = []
+            sortable: List[Tuple[int, str, int]] = []
+            for key, qty in inventory.items():
+                try:
+                    century_key = max(14, int(key))
+                    qty_i = max(0, int(qty))
+                except (TypeError, ValueError):
+                    continue
+                if qty_i > 0:
+                    sortable.append((century_key, str(key), qty_i))
+            for century_key, _raw_key, qty_i in sorted(sortable, key=lambda item: item[0]):
+                tiers.append(f"C{century_key}:{qty_i}")
+            if tiers:
+                self._draw_text(
+                    self._shorten_text("Bestand " + ", ".join(tiers), 84),
+                    self.font_small,
+                    TEXT_DIM,
+                    (footer_rect.x + 10, footer_rect.y + 32),
+                )
         self._draw_button(
             "editor_cannon_1",
-            pygame.Rect(panel.x + 24, panel.y + 232, 150, 40),
+            pygame.Rect(panel.x + 24, panel.y + panel.height - 58, 150, 40),
             f"+1 ({cannon_cost_1})",
             buy_1 > 0 and self.player.money >= cannon_cost_1,
         )
         self._draw_button(
             "editor_cannon_5",
-            pygame.Rect(panel.x + 184, panel.y + 232, 150, 40),
+            pygame.Rect(panel.x + 184, panel.y + panel.height - 58, 150, 40),
             f"+{buy_5} ({cannon_cost_5})",
             buy_5 > 0 and self.player.money >= cannon_cost_5,
         )
@@ -3216,9 +4399,10 @@ class PygameHanseApp:
 
         prices_x = panel.x + 270
         prices_y = panel.y + 90
-        prices_w = panel.width - 300
+        prices_w = 430
         selected_city = CITIES[self.selected_city_market]
         prices = self._market_prices(selected_city)
+        city_economy = self._city_economy(selected_city)
         goods_names = self._active_good_names()
         self.city_goods_offset = max(0, min(self.city_goods_offset, self._max_city_goods_offset()))
         visible_goods = goods_names[
@@ -3226,12 +4410,22 @@ class PygameHanseApp:
         ]
         header = f"Preise in {selected_city}"
         self._draw_text(header, self.font_small, ACCENT_2, (prices_x, prices_y - 24))
+        city_status = "BANKROTT" if self._city_is_bankrupt(selected_city) else "stabil"
+        influence = self._player_city_influence(selected_city)
+        self._draw_text(
+            f"Stadtkasse {city_economy.treasury} | Status {city_status} | Einfluss {influence:.1f}",
+            self.font_small,
+            BAD if city_status == "BANKROTT" else TEXT_DIM,
+            (prices_x, prices_y - 46),
+        )
         for good_name in visible_goods:
             row = pygame.Rect(prices_x, prices_y, prices_w, 36)
             pygame.draw.rect(self.screen, BG_PANEL_ALT, row, border_radius=6)
             pygame.draw.rect(self.screen, (60, 85, 122), row, width=1, border_radius=6)
             self._draw_text(good_name, self.font_small, TEXT, (row.x + 10, row.y + 10))
-            self._draw_text(f"{prices[good_name]:>4}", self.font_small, TEXT_DIM, (row.right - 60, row.y + 10))
+            stock = city_economy.inventory.get(good_name, 0)
+            self._draw_text(f"Bestand {stock:>4}", self.font_small, TEXT_DIM, (row.x + 180, row.y + 10))
+            self._draw_text(f"Preis {prices[good_name]:>4}", self.font_small, TEXT_DIM, (row.right - 120, row.y + 10))
             prices_y += 42
         if len(goods_names) > self._city_market_visible_count():
             start = self.city_goods_offset + 1
@@ -3243,6 +4437,111 @@ class PygameHanseApp:
                 (prices_x, panel.y + panel.height - 90),
             )
 
+        buildings_x = prices_x + prices_w + 16
+        buildings_w = panel.right - buildings_x - 24
+        self._draw_text("Betriebe", self.font_small, ACCENT_2, (buildings_x, panel.y + 66))
+        self.city_building_rows = []
+        if not self.selected_city_building_recipe and city_economy.buildings:
+            self.selected_city_building_recipe = city_economy.buildings[0].id
+        by = panel.y + 94
+        for building in city_economy.buildings:
+            recipe = PRODUCTION_RECIPES.get(building.id)
+            if recipe is None:
+                continue
+            row = pygame.Rect(buildings_x, by, buildings_w, 82)
+            selected_building = building.id == self.selected_city_building_recipe
+            row_color = ROW_SELECTED if selected_building else BG_PANEL_ALT
+            pygame.draw.rect(self.screen, row_color, row, border_radius=6)
+            pygame.draw.rect(self.screen, (60, 85, 122), row, width=1, border_radius=6)
+            level = max(1, int(building.level))
+            state = "aktiv" if building.active else "inaktiv"
+            unlock_century = RECIPE_UNLOCK_CENTURY.get(building.id, 14)
+            if unlock_century > self.current_century:
+                run_state = f"C{unlock_century}"
+            else:
+                run_state = "produziert" if self._can_building_run(city_economy, building) else "wartet"
+            own_pct = self._player_building_share_percent(selected_city, building.id)
+            sold_pct = self._total_building_share_percent(selected_city, building.id)
+            free_pct = max(0.0, MAX_BUILDING_SHARE_PERCENT - sold_pct)
+            price_per_pct = self._share_price_per_percent(selected_city, building)
+            inputs = ", ".join(
+                f"{good_name}x{max(0, int(qty)) * level}" for good_name, qty in recipe.inputs.items()
+            ) or "-"
+            outputs = ", ".join(
+                f"{good_name}x{max(0, int(qty)) * level}" for good_name, qty in recipe.outputs.items()
+            ) or "-"
+            meta_w = 110
+            meta_x = row.right - meta_w - 8
+            left_x = row.x + 8
+            left_w = max(120, meta_x - left_x - 8)
+            left_title = self._shorten_text(f"{recipe.name} L{level} ({state})", 30)
+            left_in = self._shorten_text(f"In: {inputs}", 30)
+            left_out = self._shorten_text(f"Out: {outputs}", 30)
+            prev_clip = self.screen.get_clip()
+            self.screen.set_clip(pygame.Rect(left_x, row.y + 2, left_w, row.height - 4))
+            self._draw_text(
+                left_title,
+                self.font_small,
+                TEXT,
+                (left_x, row.y + 5),
+            )
+            self._draw_text(
+                left_in,
+                self.font_small,
+                TEXT_DIM,
+                (left_x, row.y + 29),
+            )
+            self._draw_text(
+                left_out,
+                self.font_small,
+                TEXT_DIM,
+                (left_x, row.y + 53),
+            )
+            self.screen.set_clip(prev_clip)
+            right_info_top = f"Ihr/Frei {own_pct:.0f}%/{free_pct:.0f}%"
+            right_info_mid = f"Kurs {price_per_pct}"
+            self._draw_text(
+                run_state,
+                self.font_small,
+                ACCENT_2 if run_state == "produziert" else TEXT_DIM,
+                (meta_x, row.y + 8),
+            )
+            self._draw_text(
+                self._shorten_text(right_info_top, 20),
+                self.font_small,
+                ACCENT_2 if selected_building else TEXT_DIM,
+                (meta_x, row.y + 30),
+            )
+            self._draw_text(
+                self._shorten_text(right_info_mid, 16),
+                self.font_small,
+                ACCENT_2 if selected_building else TEXT_DIM,
+                (meta_x, row.y + 52),
+            )
+            self.city_building_rows.append((building.id, row))
+            by += 86
+            if by > panel.bottom - 90:
+                break
+
+        selected_building = next(
+            (entry for entry in city_economy.buildings if entry.id == self.selected_city_building_recipe),
+            None,
+        )
+        can_buy_share = selected_building is not None
+        self._draw_button(
+            "city_market_buy_share",
+            pygame.Rect(panel.x + panel.width - 300, panel.y + panel.height - 58, 145, 40),
+            "+5% Anteil",
+            can_buy_share,
+        )
+        self._draw_button(
+            "city_market_bailout",
+            pygame.Rect(panel.x + panel.width - 452, panel.y + panel.height - 58, 145, 40),
+            "Rettung 1000",
+            self.player is not None
+            and self.player.money >= BAILOUT_MIN_AMOUNT
+            and self._player_city_influence(selected_city) >= MIN_BAILOUT_INFLUENCE,
+        )
         self._draw_button(
             "city_market_close",
             pygame.Rect(panel.x + panel.width - 140, panel.y + panel.height - 58, 120, 40),
@@ -3254,16 +4553,30 @@ class PygameHanseApp:
         for idx, rect in self.city_market_rows:
             if rect.collidepoint(pos):
                 self.selected_city_market = idx
+                self.selected_city_building_recipe = ""
+                return
+        for recipe_id, rect in self.city_building_rows:
+            if rect.collidepoint(pos):
+                self.selected_city_building_recipe = recipe_id
                 return
         button = self._clicked_button(pos)
         if button == "city_market_close":
             self.city_market_open = False
+        elif button == "city_market_buy_share":
+            selected_city = CITIES[self.selected_city_market]
+            if self.selected_city_building_recipe:
+                self._buy_city_building_shares(selected_city, self.selected_city_building_recipe, pct=5)
+        elif button == "city_market_bailout":
+            selected_city = CITIES[self.selected_city_market]
+            self._bailout_city(selected_city, amount=1000)
 
     def _draw_missions(self) -> None:
         if self.player is None:
             return
         self._init_missions()
         self._update_fleet_synergy()
+        self._update_route_master()
+        self._update_arms_race()
         self.button_states = {}
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((5, 8, 14, 210))
@@ -3370,6 +4683,95 @@ class PygameHanseApp:
                 (panel.x + 24, y),
             )
 
+        right_x = panel.x + 530
+        y2 = panel.y + 80
+
+        mission = self.player.missions.get("brewmaster", {})
+        state = mission.get("state", "active")
+        delivered = int(mission.get("delivered", 0))
+        target = int(mission.get("target", QUEST_BREWMASTER_TARGET))
+        self._draw_text("Braumeisterbund", self.font, ACCENT_2, (right_x, y2))
+        y2 += line_gap
+        color = GOOD if state == "completed" else TEXT
+        self._draw_text(f"Bier verkaufen: {delivered}/{target}", self.font_small, color, (right_x, y2))
+        y2 += line_gap * 2
+
+        mission = self.player.missions.get("timber_trade", {})
+        state = mission.get("state", "active")
+        delivered = int(mission.get("delivered", 0))
+        target = int(mission.get("target", QUEST_TIMBER_TARGET))
+        self._draw_text("Nordholz-Vertrag", self.font, ACCENT_2, (right_x, y2))
+        y2 += line_gap
+        color = GOOD if state == "completed" else TEXT
+        self._draw_text(f"Holz verkaufen: {delivered}/{target}", self.font_small, color, (right_x, y2))
+        y2 += line_gap * 2
+
+        mission = self.player.missions.get("route_master", {})
+        state = mission.get("state", "active")
+        visited = [str(city_name) for city_name in mission.get("visited", [])]
+        target = int(mission.get("target", QUEST_ROUTE_MASTER_TARGET_CITIES))
+        self._draw_text("Routenmeister", self.font, ACCENT_2, (right_x, y2))
+        y2 += line_gap
+        color = GOOD if state == "completed" else TEXT
+        self._draw_text(f"Staedte besucht: {len(visited)}/{target}", self.font_small, color, (right_x, y2))
+        y2 += line_gap * 2
+
+        mission = self.player.missions.get("arms_race", {})
+        state = mission.get("state", "active")
+        target_cannons = int(mission.get("target_cannons", QUEST_ARMS_RACE_TARGET_CANNONS))
+        target_ships = int(mission.get("target_ships", QUEST_ARMS_RACE_TARGET_SHIPS))
+        cannons = sum(ship.cannons for ship in self.player.ships)
+        ships_count = len(self.player.ships)
+        self._draw_text("Arsenal der Hanse", self.font, ACCENT_2, (right_x, y2))
+        y2 += line_gap
+        color = GOOD if state == "completed" else TEXT
+        self._draw_text(
+            f"Schiffe {ships_count}/{target_ships} | Kanonen {cannons}/{target_cannons}",
+            self.font_small,
+            color,
+            (right_x, y2),
+        )
+        y2 += line_gap * 2
+
+        building_quests = self.player.missions.get("building_quests", {})
+        unlocked_recipe_ids = self._unlocked_recipe_ids(self.current_century)
+        total_tiers = len(unlocked_recipe_ids) * BUILDING_QUEST_TIERS
+        completed_tiers = 0
+        for recipe_id in unlocked_recipe_ids:
+            entry = building_quests.get(recipe_id, {})
+            completed_tiers += min(BUILDING_QUEST_TIERS, max(0, int(entry.get("tier", 0))))
+        self._draw_text("Betriebskampagnen", self.font, ACCENT_2, (right_x, y2))
+        y2 += line_gap
+        self._draw_text(
+            f"Queststufen gesamt: {completed_tiers}/{total_tiers}",
+            self.font_small,
+            TEXT,
+            (right_x, y2),
+        )
+        y2 += line_gap
+        preview_count = 5
+        for recipe_id in unlocked_recipe_ids[:preview_count]:
+            recipe = PRODUCTION_RECIPES.get(recipe_id)
+            if recipe is None:
+                continue
+            entry = building_quests.get(recipe_id, {})
+            tier = min(BUILDING_QUEST_TIERS, max(0, int(entry.get("tier", 0))))
+            if tier >= BUILDING_QUEST_TIERS:
+                line = f"{recipe.name}: 8/8"
+            else:
+                progress = max(0, int(entry.get("progress", 0)))
+                target = self._building_quest_target(recipe_id, tier)
+                line = f"{recipe.name}: {tier + 1}/8 {progress}/{target}"
+            self._draw_text(self._shorten_text(line, 40), self.font_small, TEXT_DIM, (right_x, y2))
+            y2 += 20
+        if len(unlocked_recipe_ids) > preview_count:
+            self._draw_text(
+                f"... +{len(unlocked_recipe_ids) - preview_count} weitere Betriebe",
+                self.font_small,
+                TEXT_DIM,
+                (right_x, y2),
+            )
+
         self._draw_button(
             "missions_close",
             pygame.Rect(panel.right - 160, panel.bottom - 60, 130, 40),
@@ -3399,18 +4801,27 @@ class PygameHanseApp:
         net = self._net_worth(player, self._market_prices(player.city))
         current_title = self._title_for(player)
         title_steps = self._active_titles()
-        next_title = "-"
+        next_title = f"{current_title} (Maximalrang)"
         next_gap = 0
         if player.title_index + 1 < len(title_steps):
             threshold, male, female = title_steps[player.title_index + 1]
             next_title = female if player.gender == "w" else male
             next_gap = max(0, threshold - net)
 
+        content_rect = pygame.Rect(panel.x + 20, panel.y + 68, panel.width - 40, panel.height - 146)
+        self.info_scroll = max(0, min(self.info_scroll, self.info_max_scroll))
+        scroll_start = content_rect.y + 8
         left_x = panel.x + 28
         right_x = panel.x + 540
-        y_left = panel.y + 76
-        y_right = panel.y + 76
+        y_left = scroll_start
+        y_right = scroll_start
         gap = 26
+
+        prev_clip = self.screen.get_clip()
+        self.screen.set_clip(content_rect)
+
+        def draw_line(text: str, font: pygame.font.Font, color: Tuple[int, int, int], x: int, y: int) -> None:
+            self._draw_text(text, font, color, (x, y - self.info_scroll))
 
         family_state = "verheiratet" if player.married else "ledig"
         spouse = player.spouse_name if player.spouse_name else "-"
@@ -3418,43 +4829,44 @@ class PygameHanseApp:
         if len(player.child_names) > 4:
             children += f", ... (+{len(player.child_names) - 4})"
 
-        self._draw_text(f"Name: {player.name}", self.font_small, TEXT, (left_x, y_left))
+        draw_line(f"Name: {player.name}", self.font_small, TEXT, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Titel: {current_title}", self.font_small, TEXT, (left_x, y_left))
+        draw_line(f"Titel: {current_title}", self.font_small, TEXT, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Alter: {player.age}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Alter: {player.age}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(
+        draw_line(
             f"Geschlecht: {'weiblich' if player.gender == 'w' else 'maennlich'}",
             self.font_small,
             TEXT_DIM,
-            (left_x, y_left),
+            left_x,
+            y_left,
         )
         y_left += gap
-        self._draw_text(f"Familienstand: {family_state}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Familienstand: {family_state}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Ehepartner: {spouse}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Ehepartner: {spouse}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Kinder ({player.children}): {children}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Kinder ({player.children}): {children}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Aktueller Ort: {player.city}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Aktueller Ort: {player.city}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Datum: {self._date_label()}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Datum: {self._date_label()}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Seezustand: {self.current_sea_state}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Seezustand: {self.current_sea_state}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap + 2
 
-        self._draw_text(f"Mark: {player.money}", self.font_small, GOOD, (left_x, y_left))
+        draw_line(f"Mark: {player.money}", self.font_small, GOOD, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Schulden: {player.debt}", self.font_small, BAD if player.debt > 0 else TEXT_DIM, (left_x, y_left))
+        draw_line(f"Schulden: {player.debt}", self.font_small, BAD if player.debt > 0 else TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Reputation: {player.reputation}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Reputation: {player.reputation}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Gesamtwert: {net}", self.font_small, ACCENT_2, (left_x, y_left))
+        draw_line(f"Gesamtwert: {net}", self.font_small, ACCENT_2, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Naechster Titel: {next_title}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Naechster Titel: {next_title}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        self._draw_text(f"Fehlender Wert: {next_gap}", self.font_small, TEXT_DIM, (left_x, y_left))
+        draw_line(f"Fehlender Wert: {next_gap}", self.font_small, TEXT_DIM, left_x, y_left)
 
         ships_total = len(player.ships)
         ships_at_sea = sum(1 for ship in player.ships if ship.is_at_sea)
@@ -3465,48 +4877,95 @@ class PygameHanseApp:
         avg_rigging = int(round(sum(ship.rigging for ship in player.ships) / ships_total)) if ships_total else 0
         total_cannons = sum(ship.cannons for ship in player.ships)
 
-        self._draw_text("Flottenstatus", self.font, ACCENT_2, (right_x, y_right))
+        draw_line("Flottenstatus", self.font, ACCENT_2, right_x, y_right)
         y_right += gap + 4
-        self._draw_text(f"Schiffe gesamt: {ships_total}", self.font_small, TEXT, (right_x, y_right))
+        draw_line(f"Schiffe gesamt: {ships_total}", self.font_small, TEXT, right_x, y_right)
         y_right += gap
-        self._draw_text(f"Im Hafen: {ships_harbor} | Auf See: {ships_at_sea}", self.font_small, TEXT_DIM, (right_x, y_right))
+        draw_line(f"Im Hafen: {ships_harbor} | Auf See: {ships_at_sea}", self.font_small, TEXT_DIM, right_x, y_right)
         y_right += gap
-        self._draw_text(f"Ladung: {total_cargo}/{total_capacity}", self.font_small, TEXT_DIM, (right_x, y_right))
+        draw_line(f"Ladung: {total_cargo}/{total_capacity}", self.font_small, TEXT_DIM, right_x, y_right)
         y_right += gap
-        self._draw_text(f"Durchschnitt Rumpf/Takelage: {avg_hull}% / {avg_rigging}%", self.font_small, TEXT_DIM, (right_x, y_right))
+        draw_line(
+            f"Durchschnitt Rumpf/Takelage: {avg_hull}% / {avg_rigging}%",
+            self.font_small,
+            TEXT_DIM,
+            right_x,
+            y_right,
+        )
         y_right += gap
-        self._draw_text(f"Kanonen gesamt: {total_cannons}", self.font_small, TEXT_DIM, (right_x, y_right))
+        draw_line(f"Kanonen gesamt: {total_cannons}", self.font_small, TEXT_DIM, right_x, y_right)
         y_right += gap + 8
 
-        self._draw_text("Missionen", self.font, ACCENT_2, (right_x, y_right))
+        draw_line("Missionen", self.font, ACCENT_2, right_x, y_right)
         y_right += gap + 2
         mission_labels = [
             ("hanse_privileg", "Hanse-Privileg"),
             ("fleet_synergy", "Architekt der Synergie"),
             ("atheria_resonance", "Atheria-Resonanz"),
             ("family_dynasty", "Familiendynastie"),
+            ("brewmaster", "Braumeisterbund"),
+            ("timber_trade", "Nordholz-Vertrag"),
+            ("route_master", "Routenmeister"),
+            ("arms_race", "Arsenal der Hanse"),
         ]
         for key, label in mission_labels:
             state = player.missions.get(key, {}).get("state", "inactive")
             state_text = str(state).upper()
             color = GOOD if state == "completed" else (BAD if state == "failed" else TEXT_DIM)
-            self._draw_text(f"{label}: {state_text}", self.font_small, color, (right_x, y_right))
+            draw_line(f"{label}: {state_text}", self.font_small, color, right_x, y_right)
             y_right += gap
+        building_quests = player.missions.get("building_quests", {})
+        unlocked_recipe_ids = self._unlocked_recipe_ids(self.current_century)
+        total_tiers = len(unlocked_recipe_ids) * BUILDING_QUEST_TIERS
+        completed_tiers = 0
+        if isinstance(building_quests, dict):
+            for recipe_id in unlocked_recipe_ids:
+                quest_data = building_quests.get(recipe_id, {})
+                completed_tiers += min(BUILDING_QUEST_TIERS, max(0, int(quest_data.get("tier", 0))))
+        draw_line(
+            f"Betriebskampagnen: {completed_tiers}/{total_tiers}",
+            self.font_small,
+            GOOD if total_tiers > 0 and completed_tiers >= total_tiers else TEXT_DIM,
+            right_x,
+            y_right,
+        )
+        y_right += gap
 
         y_right += 4
-        self._draw_text("Schiffdetails", self.font, ACCENT_2, (right_x, y_right))
+        draw_line("Schiffdetails", self.font, ACCENT_2, right_x, y_right)
         y_right += gap + 2
-        max_ship_lines = 7
-        for ship in player.ships[:max_ship_lines]:
+        for ship in player.ships:
             if ship.is_at_sea and ship.destination:
                 loc = f"See->{ship.destination} ({ship.travel_turns_left}M)"
             else:
                 loc = ship.city
             line = f"{ship.display_name}: {loc}, L {ship.total_cargo}/{ship.cargo_capacity}, K {ship.cannons}"
-            self._draw_text(self._shorten_text(line, 64), self.font_small, TEXT_DIM, (right_x, y_right))
+            draw_line(self._shorten_text(line, 64), self.font_small, TEXT_DIM, right_x, y_right)
             y_right += 22
-        if ships_total > max_ship_lines:
-            self._draw_text(f"... +{ships_total - max_ship_lines} weitere Schiffe", self.font_small, TEXT_DIM, (right_x, y_right))
+
+        self.screen.set_clip(prev_clip)
+        content_height = max(y_left, y_right) - scroll_start + 10
+        self.info_max_scroll = max(0, content_height - content_rect.height)
+        self.info_scroll = max(0, min(self.info_scroll, self.info_max_scroll))
+
+        self._draw_button(
+            "info_up",
+            pygame.Rect(panel.right - 266, panel.bottom - 58, 48, 40),
+            "^",
+            self.info_scroll > 0,
+        )
+        self._draw_button(
+            "info_down",
+            pygame.Rect(panel.right - 212, panel.bottom - 58, 48, 40),
+            "v",
+            self.info_scroll < self.info_max_scroll,
+        )
+        self._draw_text(
+            f"Scroll {self.info_scroll}/{self.info_max_scroll}",
+            self.font_small,
+            TEXT_DIM,
+            (panel.x + 26, panel.bottom - 48),
+        )
 
         self._draw_button(
             "info_close",
@@ -3831,6 +5290,7 @@ class PygameHanseApp:
         self.city_goods_offset = 0
         self.shipyard_offset = 0
         self.selected_dest = 0
+        self.selected_weapon_century = self.current_century
         self.selected_ship_type = 0
         self.selected_fleet_ship = 0
         self.fleet_scroll = 0
@@ -3841,8 +5301,12 @@ class PygameHanseApp:
         self.save_menu_open = False
         self.save_menu_mode = None
         self.city_market_open = False
+        self.selected_city_market = 0
+        self.selected_city_building_recipe = ""
         self.missions_open = False
         self.info_open = False
+        self.info_scroll = 0
+        self.info_max_scroll = 0
         self.cheat_open = False
         self.cheat_text = ""
         self.marriage_popup_open = False
@@ -3863,7 +5327,8 @@ class PygameHanseApp:
         self._log(f"Atheria-Wirtschaft: {self.economy_state.summary}")
         self._log(
             f"Weltmarkt: Produktion {self.last_world_tick.get('producing_buildings', 0)} Betriebe | "
-            f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)}."
+            f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)} | "
+            f"Bankrott-Staedte {self.last_world_tick.get('cities_bankrupt', 0)}."
         )
         self.scene = "game"
 
@@ -3982,12 +5447,17 @@ class PygameHanseApp:
             self.selected_ship_type = 0
             self.selected_fleet_ship = 0
             self.fleet_scroll = 0
+            self.selected_weapon_century = self.current_century
             self.preview_destination = None
             self.save_menu_open = False
             self.save_menu_mode = None
             self.city_market_open = False
+            self.selected_city_market = 0
+            self.selected_city_building_recipe = ""
             self.missions_open = False
             self.info_open = False
+            self.info_scroll = 0
+            self.info_max_scroll = 0
             self.cheat_open = False
             self.cheat_text = ""
             self.marriage_popup_open = False
@@ -4000,7 +5470,8 @@ class PygameHanseApp:
             self.auto_popup_hold_until = 0
             self.auto_last_ship_build_month = -9999
             self.time_limit_reached = False
-            self.last_world_tick = {"producing_buildings": 0, "npc_trades": 0}
+            self.last_world_tick = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
+            self.last_dividend_pools = {}
             self._sync_century_content(announce=False)
             self._init_missions()
             self._log(f"Slot {slot} geladen.")
@@ -4020,6 +5491,7 @@ class PygameHanseApp:
         city_macro = self.economy_state.city_factor(city)
         city_economy = self._city_economy(city)
         global_price_level = self.economy_state.global_price_level
+        bankruptcy_factor = 1.10 if self._city_is_bankrupt(city) else 1.0
         prices: Dict[str, int] = {}
         for good_name, params in self._active_goods().items():
             base = params["base_price"]
@@ -4036,6 +5508,7 @@ class PygameHanseApp:
                 * city_macro
                 * good_macro
                 * stock_factor
+                * bankruptcy_factor
             )
             prices[good_name] = max(6, price)
         self.market_cache[key] = prices
@@ -4106,6 +5579,7 @@ class PygameHanseApp:
         self.player.money += revenue
         self.player.reputation = min(200, self.player.reputation + 1)
         self._record_hanse_delivery(self.player.city, good, qty)
+        self._record_trade_for_missions(good, qty)
         if locked_sold > 0 and remaining > 0:
             self._log(
                 f"Verkauft: {qty} {good} fuer {revenue} Mark ({locked_sold} gebunden)."
@@ -4184,7 +5658,7 @@ class PygameHanseApp:
             self.player.chronicle.append(
                 f"ANNO {self.current_year}: Sturm zwischen {origin} und {target} ({ship.display_name})."
             )
-        cannon_power = self._active_cannon_power()
+        cannon_power = self._ship_cannon_power(ship)
         effective_cannons = ship.cannons * cannon_power
         pirate_chance = risk / (1 + effective_cannons * 0.5)
         if self.rng.random() < pirate_chance:
@@ -4268,6 +5742,8 @@ class PygameHanseApp:
             self._log(f"Schuldturm: noch {self.player.turns_in_debt_tower} Monat(e).")
             self.player.chronicle.append(f"ANNO {self.current_year}: Schuldturm ({MONTHS[self.current_month - 1]}).")
 
+        self._apply_passive_income()
+
         heuer_factor = max(0.75, min(1.45, 0.88 + (price_level - 1.0) * 0.35))
         total_capacity = sum(ship.cargo_capacity for ship in self.player.ships)
         yearly_heuer = int((140 + total_capacity // 4) * heuer_factor)
@@ -4330,7 +5806,8 @@ class PygameHanseApp:
         self._log(f"Atheria-Wirtschaft: {self.economy_state.summary}")
         self._log(
             f"Weltmarkt: Produktion {self.last_world_tick.get('producing_buildings', 0)} Betriebe | "
-            f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)}."
+            f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)} | "
+            f"Bankrott-Staedte {self.last_world_tick.get('cities_bankrupt', 0)}."
         )
 
     def _resolve_fleet_travel(self) -> None:
@@ -4358,6 +5835,7 @@ class PygameHanseApp:
             ship.is_at_sea = False
             ship.destination = None
             ship.travel_turns_left = 0
+            self._record_city_visit(target)
             ship.last_report = f"Ankunft in {target}."
             if event_summary:
                 ship.last_report = f"{ship.last_report} {event_summary}"
