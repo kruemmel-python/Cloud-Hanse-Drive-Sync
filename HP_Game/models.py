@@ -14,6 +14,7 @@ class Ship:
     value: int = 3200
     cargo: Dict[str, int] = field(default_factory=dict)
     cannons: int = 0
+    cannon_inventory: Dict[str, int] = field(default_factory=dict)
     is_at_sea: bool = False
     city: str = "Luebeck"
     destination: Optional[str] = None
@@ -41,12 +42,22 @@ class Ship:
         destination = data.get("destination")
         locked_prices_raw = data.get("locked_prices", {})
         locked_qty_raw = data.get("locked_qty", {})
+        cannon_inventory_raw = data.get("cannon_inventory", {})
         locked_prices = (
             {str(k): int(v) for k, v in locked_prices_raw.items()} if isinstance(locked_prices_raw, dict) else {}
         )
         locked_qty = (
             {str(k): int(v) for k, v in locked_qty_raw.items()} if isinstance(locked_qty_raw, dict) else {}
         )
+        cannon_inventory: Dict[str, int] = {}
+        if isinstance(cannon_inventory_raw, dict):
+            for raw_key, raw_value in cannon_inventory_raw.items():
+                try:
+                    qty = max(0, int(raw_value))
+                except (TypeError, ValueError):
+                    continue
+                if qty > 0:
+                    cannon_inventory[str(raw_key)] = qty
         return cls(
             name=str(data.get("name", "Kogge")),
             custom_name=str(data.get("custom_name", "")),
@@ -56,6 +67,7 @@ class Ship:
             value=int(data.get("value", 3200)),
             cargo=cargo,
             cannons=int(data.get("cannons", 0)),
+            cannon_inventory=cannon_inventory,
             is_at_sea=bool(data.get("is_at_sea", False)),
             city=str(data.get("city", "Luebeck")),
             destination=str(destination) if destination else None,
@@ -66,6 +78,14 @@ class Ship:
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        cannon_inventory: Dict[str, int] = {}
+        for key, value in self.cannon_inventory.items():
+            try:
+                qty = max(0, int(value))
+            except (TypeError, ValueError):
+                continue
+            if qty > 0:
+                cannon_inventory[str(key)] = qty
         return {
             "name": self.name,
             "custom_name": self.custom_name,
@@ -75,6 +95,7 @@ class Ship:
             "value": self.value,
             "cargo": dict(self.cargo),
             "cannons": self.cannons,
+            "cannon_inventory": cannon_inventory,
             "is_at_sea": self.is_at_sea,
             "city": self.city,
             "destination": self.destination,
@@ -324,6 +345,8 @@ class Player:
     turns_in_debt_tower: int = 0
     chronicle: List[str] = field(default_factory=list)
     investments: List[Investment] = field(default_factory=list)
+    building_shares: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    city_influence: Dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.ships:
@@ -339,6 +362,35 @@ class Player:
         elif self.children > len(self.child_names):
             for idx in range(len(self.child_names) + 1, self.children + 1):
                 self.child_names.append(f"Kind {idx}")
+        if not isinstance(self.building_shares, dict):
+            self.building_shares = {}
+        cleaned_shares: Dict[str, Dict[str, float]] = {}
+        for city_name, share_map in self.building_shares.items():
+            if not isinstance(share_map, dict):
+                continue
+            city_key = str(city_name)
+            cleaned_city: Dict[str, float] = {}
+            for recipe_id, value in share_map.items():
+                try:
+                    pct = max(0.0, float(value))
+                except (TypeError, ValueError):
+                    continue
+                if pct > 0:
+                    cleaned_city[str(recipe_id)] = pct
+            if cleaned_city:
+                cleaned_shares[city_key] = cleaned_city
+        self.building_shares = cleaned_shares
+        if not isinstance(self.city_influence, dict):
+            self.city_influence = {}
+        cleaned_influence: Dict[str, float] = {}
+        for city_name, value in self.city_influence.items():
+            try:
+                score = max(0.0, float(value))
+            except (TypeError, ValueError):
+                continue
+            if score > 0:
+                cleaned_influence[str(city_name)] = score
+        self.city_influence = cleaned_influence
 
     @property
     def total_cargo(self) -> int:
@@ -397,6 +449,11 @@ class Player:
             "turns_in_debt_tower": self.turns_in_debt_tower,
             "chronicle": list(self.chronicle),
             "investments": [inv.to_dict() for inv in self.investments],
+            "building_shares": {
+                city: {recipe_id: float(pct) for recipe_id, pct in shares.items()}
+                for city, shares in self.building_shares.items()
+            },
+            "city_influence": {city: float(score) for city, score in self.city_influence.items()},
         }
 
     @classmethod
@@ -463,6 +520,33 @@ class Player:
             for key, value in missions_raw.items():
                 if isinstance(value, dict):
                     missions[str(key)] = dict(value)
+        shares_raw = data.get("building_shares", {})
+        building_shares: Dict[str, Dict[str, float]] = {}
+        if isinstance(shares_raw, dict):
+            for raw_city, raw_values in shares_raw.items():
+                if not isinstance(raw_values, dict):
+                    continue
+                city_key = str(raw_city)
+                city_shares: Dict[str, float] = {}
+                for raw_recipe, raw_pct in raw_values.items():
+                    try:
+                        pct = max(0.0, float(raw_pct))
+                    except (TypeError, ValueError):
+                        continue
+                    if pct > 0:
+                        city_shares[str(raw_recipe)] = pct
+                if city_shares:
+                    building_shares[city_key] = city_shares
+        influence_raw = data.get("city_influence", {})
+        city_influence: Dict[str, float] = {}
+        if isinstance(influence_raw, dict):
+            for raw_city, raw_score in influence_raw.items():
+                try:
+                    score = max(0.0, float(raw_score))
+                except (TypeError, ValueError):
+                    continue
+                if score > 0:
+                    city_influence[str(raw_city)] = score
         child_names_raw = data.get("child_names", [])
         child_names: List[str] = []
         if isinstance(child_names_raw, list):
@@ -503,4 +587,6 @@ class Player:
             turns_in_debt_tower=int(data.get("turns_in_debt_tower", 0)),
             chronicle=[str(item) for item in data.get("chronicle", [])],
             investments=investments,
+            building_shares=building_shares,
+            city_influence=city_influence,
         )

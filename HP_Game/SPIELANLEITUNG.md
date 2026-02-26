@@ -19,6 +19,11 @@ Enthaltene Erweiterungen:
 - **Jahrhundertwechsel/Freischaltungen:** Neue Waren, Schiffstypen, Titelstufen und Waffenprofile werden automatisch aktiv.
 - **Auto-Aufwertung im Auto-Modus:** Neue Gueter werden automatisch gehandelt; neue Schiffe/Kanonen gemaess aktueller Jahrhundert-Technik genutzt.
 - **Flottenmodernisierung:** Schiffe koennen im Hafen verkauft werden, um auf neue Jahrhundertmodelle umzusteigen.
+- **Mehr Quests:** Acht parallele Langzeitmissionen statt nur der vier Basisziele.
+- **Betriebsinspektion:** Weltwirtschafts-Menue (CLI) und Stadtmarktansicht (pygame) zeigen Betriebsdetails je Stadt.
+- **CSV-Export:** Voller Wirtschafts- und Spielerreport fuer Excel-Auswertung.
+- **Beteiligungsmarkt:** Spieler kann Anteile an staedtischen Betrieben kaufen und passive Rendite erhalten.
+- **Politischer Einfluss & Stadtrettung:** Einfluss pro Stadt steigt durch Investitionen; Rettungsfonds koennen bankrotte Staedte stabilisieren.
 
 ## 1) Titelblatt & Basisdaten
 
@@ -113,6 +118,7 @@ Siehe Build-Anleitung in `HP_Android/README.md`.
 | Menge verringern | `-` / Numpad `-` |
 | Slot speichern | `F5` |
 | Slot laden | `F9` |
+| CSV-Report exportieren (pygame) | `F6` |
 
 ### Texteingabe
 
@@ -182,6 +188,29 @@ Beispiele fuer Startbetriebe:
 - Luebeck: Brauerei (u. a. Produktion von **Bier**)
 - Bergen: Holzfaeller
 - Riga/Novgorod: Salzmine
+
+Aktive Standardrezepte:
+
+- **Brauerei:** Getreide + Holz -> Bier
+- **Salzmine:** -> Salz
+- **Holzfaeller:** -> Holz
+- **Fischerei:** -> Hering
+- **Getreidehof:** -> Getreide
+- **Weinkellerei:** Getreide -> Wein
+- **Weberei:** Holz -> Tuch
+- **Gerberei:** Salz -> Pelze
+
+Jahrhundert-Freischaltungen (zusätzliche Betriebe):
+
+- **15. Jh.:** Hopfenplantage, Teerbrennerei, Grossbrauerei
+- **16. Jh.:** Gewuerzhandel, Kupfermine, Gewuerzraffinerie
+- **17. Jh.:** Tabakplantage, Zuckerplantage, Zuckerraffinerie
+- **18. Jh.:** Kaffeeplantage, Baumwollfarm, Textilmanufaktur
+- **19. Jh.:** Kohlemine, Stahlwerk, Raffinerie
+- **20. Jh.:** Elektronikfabrik
+- **21. Jh.:** Seltene Erden Mine, Chipfabrik
+
+Jede Stadt startet deterministisch mit **mindestens vier Betrieben**, Kernstaedte mit hoeheren Levels.
 
 Dadurch entsteht reale Warenstroemung ohne Spieleraktion: Produktion fuellt Maerkte, Handel leert Maerkte.
 
@@ -308,6 +337,11 @@ Die Langzeitziele verknuepfen Handel, Flotte, Makrooekonomie und Dynastie:
 - **Architekt der Synergie**: Flottenkomposition + Zustand; Reward: Heuer-Reduktion
 - **Atheria-Resonanz**: Netto-Wert-Skalierung in Rezession; Reward: Prestige/Meilenstein
 - **Familiendynastie**: Familien- und Kapitalziel; Reward: Erbfortfuehrung statt hartem Reset
+- **Braumeisterbund**: Bier-Absatzauftrag ueber mehrere Maerkte
+- **Nordholz-Vertrag**: Holz-Volumenquest fuer Langstreckenhandel
+- **Routenmeister**: Mindestens 6 verschiedene Staedte aktiv anlaufen
+- **Arsenal der Hanse**: Flotte auf Zielzahl bei Schiffen und Kanonen ausbauen
+- **Betriebskampagnen:** Fuer **jeden** Betrieb gibt es **8 Queststufen** (verkaufsbasiert auf Outputware, mit Staffel-Rewards)
 
 ### 5.10 Auto-Modus (Atheria-Autopilot)
 
@@ -341,11 +375,44 @@ Automatisches Verhalten:
 - Der Auto-Modus handelt neue Waren ohne Extra-Konfiguration, sobald sie verfuegbar sind.
 - Beim Schiffbau greift er auf das aktuell freigeschaltete Werftangebot zu.
 - Bei Wartung/Aufruestung kauft er Kanonen auf Basis der aktiven Jahrhundert-Technik.
+- Die Werft zeigt pro Jahrhundert nur aktuelle Schiffsmodelle; veraltete Modelle sind nicht mehr kaufbar.
+- Im Schiff-Editor lassen sich Kanonenstufen (alt bis neu) waehlen und gezielt montieren.
 
 Manuelles Ersetzen alter Schiffe:
 
 - Alte Schiffe koennen im Hafen verkauft werden (nicht auf See, nicht beladen, letztes Schiff ist gesperrt).
 - So lassen sich Flotten gezielt gegen neue Jahrhundertmodelle austauschen.
+
+### 5.12 Anteilssystem, passive Rendite und Stadtrettung
+
+Die Weltwirtschaft besitzt einen zusaetzlichen **Beteiligungsmarkt** pro Stadt und Betrieb.
+
+- Anteilskauf erfolgt je Betrieb in Prozentpunkten (z. B. +5%).
+- Der Anteilskurs wird aus Rezeptwert (Input/Output), Gebaeudelevel und Technologieepoche abgeleitet.
+- Ein Teil des Kaufpreises fliesst direkt in die Stadtkasse.
+
+Passive Rendite:
+
+- Bei laufender Produktion entsteht je Betrieb ein monatlicher **Dividendenpool**.
+- Deine Auszahlung ergibt sich aus `Dividendenpool * Anteil%`.
+- Auszahlungen sind durch die reale Stadtkasse gedeckelt (keine unendliche Geldquelle).
+
+Politischer Einfluss:
+
+- Anteilskauf und Dividenden steigern den stadtbezogenen Einflusswert.
+- Einfluss ist stadtlokal und wird im Status/Weltwirtschaftsfenster angezeigt.
+
+Stadtrettung bei Bankrott:
+
+- Unterhalb eines kritischen Kassenwerts gilt eine Stadt als bankrottgefaehrdet.
+- In diesem Zustand laufen Betriebe gedrosselt und Preise erhalten einen Krisenaufschlag.
+- Mit ausreichendem Einfluss kann der Spieler einen **Rettungsfonds** einzahlen.
+- Die Einzahlung hebt die Stadtkasse direkt an (mit Einflussbonus) und kann die Stadt wieder stabilisieren.
+
+Bedienung:
+
+- **CLI:** `Weltwirtschaft` -> Stadt waehlen -> `Anteile kaufen` / `Rettungsfonds`.
+- **pygame:** `Stadtpreise`-Fenster -> Betrieb waehlen -> `+5% Anteil` bzw. `Rettung 1000`.
 
 ---
 
@@ -371,6 +438,8 @@ Zusatzfenster:
 - **Info**: Gesamtstatus des Spielers (Titel, Familie, Finanzen, Flotte, Missionen)
 - **Schiffsladung**: Transfer Lager <-> Schiff + Reiseziel
 - **Schiff-Editor**: Name + Kanonenkauf
+- **Weltwirtschaft (CLI)**: Pro Stadt Betriebsliste inkl. Inputs/Outputs, Aktivstatus und Laufbarkeit
+- **CSV-Export**: Vollreport ueber Stadtinventare, Betriebe, NPCs, Missionen und Flotte
 
 ![Chronik-Texture](images/paper_texture_chronik.webp)
 ![Transfer-Texture](images/paper_texture_transfer.webp)

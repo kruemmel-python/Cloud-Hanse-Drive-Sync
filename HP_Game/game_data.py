@@ -101,6 +101,7 @@ CENTURY_GOOD_UNLOCKS: Dict[int, Dict[str, Dict[str, float]]] = {
     16: {
         "Gewuerze": {"base_price": 110, "volatility": 0.30},
         "Kupfer": {"base_price": 92, "volatility": 0.24},
+        "Luxuswaren": {"base_price": 148, "volatility": 0.28},
     },
     17: {
         "Tabak": {"base_price": 88, "volatility": 0.27},
@@ -295,6 +296,39 @@ def shipyard_for_century(century: int) -> List[Tuple[str, int, int, int]]:
 
 def shipyard_for_year(year: int) -> List[Tuple[str, int, int, int]]:
     return shipyard_for_century(year_to_century(year))
+
+
+@lru_cache(maxsize=None)
+def ship_unlock_century(ship_name: str) -> int:
+    name = str(ship_name)
+    for century, unlocks in CENTURY_SHIP_UNLOCKS.items():
+        for unlock_name, *_ in unlocks:
+            if unlock_name == name:
+                return int(century)
+    if name.startswith("Expeditionsklasse C"):
+        suffix = name.split("C", maxsplit=1)[-1]
+        try:
+            return max(14, int(suffix))
+        except ValueError:
+            return max(CENTURY_SHIP_UNLOCKS)
+    for base_name, *_ in BASE_SHIPYARD:
+        if base_name == name:
+            return 14
+    return 14
+
+
+def modern_shipyard_for_century(century: int) -> List[Tuple[str, int, int, int]]:
+    century_i = max(14, int(century))
+    shipyard = shipyard_for_century(century_i)
+    current_models = [entry for entry in shipyard if ship_unlock_century(entry[0]) == century_i]
+    if current_models:
+        return current_models
+    latest_unlock = max(ship_unlock_century(entry[0]) for entry in shipyard) if shipyard else 14
+    return [entry for entry in shipyard if ship_unlock_century(entry[0]) == latest_unlock]
+
+
+def modern_shipyard_for_year(year: int) -> List[Tuple[str, int, int, int]]:
+    return modern_shipyard_for_century(year_to_century(year))
 
 
 def ships_unlocked_in_century(century: int) -> List[Tuple[str, int, int, int]]:

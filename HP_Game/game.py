@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import csv
 import json
 import hashlib
+import os
 import random
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -38,8 +41,10 @@ from game_data import (
     STARTING_MONTH,
     STARTING_REPUTATION,
     STARTING_YEAR,
+    modern_shipyard_for_year,
     shipyard_for_year,
     title_steps_for_year,
+    year_to_century,
 )
 from models import Building, CityEconomy, Investment, NPCTrader, Player, ProductionRecipe, Ship, WorldEconomy
 
@@ -53,6 +58,65 @@ BASE_CITY_CONSUMPTION: Dict[str, int] = {
     "Getreide": 1,
     "Salz": 1,
     "Hering": 1,
+}
+
+QUEST_BREWMASTER_TARGET = 220
+QUEST_TIMBER_TARGET = 300
+QUEST_ROUTE_MASTER_TARGET_CITIES = 6
+QUEST_ARMS_RACE_TARGET_CANNONS = 20
+QUEST_ARMS_RACE_TARGET_SHIPS = 3
+BUILDING_QUEST_TIERS = 8
+BUILDING_QUEST_BASE_MULT = 18
+CITY_BANKRUPTCY_LIMIT = -550
+CITY_RECOVERY_TARGET = -120
+CITY_TREASURY_BASE_INCOME_PER_BUILDING = 2
+DIVIDEND_POOL_FACTOR = 0.35
+MAX_BUILDING_SHARE_PERCENT = 100.0
+MIN_BAILOUT_INFLUENCE = 6.0
+BAILOUT_MIN_AMOUNT = 500
+BAILOUT_INFLUENCE_COST = 4.0
+INFLUENCE_PER_SHARE_PURCHASE = 0.30
+INFLUENCE_PER_DIVIDEND_1000 = 0.35
+
+RECIPE_UNLOCK_CENTURY: Dict[str, int] = {
+    "brewery": 14,
+    "salt_mine": 14,
+    "woodcutter": 14,
+    "fishery": 14,
+    "grain_farm": 14,
+    "winery": 14,
+    "weavery": 14,
+    "tannery": 14,
+    "hop_farm": 15,
+    "tar_kiln": 15,
+    "grand_brewery": 15,
+    "spice_trade": 16,
+    "copper_mine": 16,
+    "spice_refinery": 16,
+    "tobacco_farm": 17,
+    "sugar_farm": 17,
+    "sugar_refinery": 17,
+    "coffee_farm": 18,
+    "cotton_farm": 18,
+    "textile_factory": 18,
+    "coal_mine": 19,
+    "steel_mill": 19,
+    "refinery": 19,
+    "electronics_factory": 20,
+    "rare_earth_mine": 21,
+    "chip_factory": 21,
+}
+
+CITY_RECIPE_LEVEL_BONUS: Dict[str, Dict[str, int]] = {
+    "Luebeck": {"brewery": 2, "grand_brewery": 2, "weavery": 2, "textile_factory": 2, "spice_trade": 2},
+    "Bergen": {"woodcutter": 2, "fishery": 2, "tar_kiln": 2, "hop_farm": 2},
+    "Toensberg": {"fishery": 2, "tar_kiln": 2, "sugar_farm": 2},
+    "Warberg": {"grain_farm": 2, "cotton_farm": 2, "refinery": 2},
+    "Malmoe": {"weavery": 2, "textile_factory": 2, "coffee_farm": 2},
+    "Ystad": {"fishery": 2, "spice_trade": 2, "sugar_refinery": 2},
+    "Visby": {"hop_farm": 2, "spice_refinery": 2, "tobacco_farm": 2},
+    "Riga": {"salt_mine": 2, "copper_mine": 2, "steel_mill": 2, "rare_earth_mine": 2},
+    "Novgorod": {"salt_mine": 2, "copper_mine": 2, "coal_mine": 2, "chip_factory": 2},
 }
 
 PRODUCTION_RECIPES: Dict[str, ProductionRecipe] = {
@@ -84,6 +148,160 @@ PRODUCTION_RECIPES: Dict[str, ProductionRecipe] = {
         outputs={"Hering": 4},
         upkeep=1,
     ),
+    "grain_farm": ProductionRecipe(
+        id="grain_farm",
+        name="Getreidehof",
+        inputs={},
+        outputs={"Getreide": 5},
+        upkeep=1,
+    ),
+    "winery": ProductionRecipe(
+        id="winery",
+        name="Weinkellerei",
+        inputs={"Getreide": 3},
+        outputs={"Wein": 3},
+        upkeep=2,
+    ),
+    "weavery": ProductionRecipe(
+        id="weavery",
+        name="Weberei",
+        inputs={"Holz": 2},
+        outputs={"Tuch": 3},
+        upkeep=2,
+    ),
+    "tannery": ProductionRecipe(
+        id="tannery",
+        name="Gerberei",
+        inputs={"Salz": 1},
+        outputs={"Pelze": 2},
+        upkeep=2,
+    ),
+    "hop_farm": ProductionRecipe(
+        id="hop_farm",
+        name="Hopfenplantage",
+        inputs={},
+        outputs={"Hopfen": 5},
+        upkeep=1,
+    ),
+    "tar_kiln": ProductionRecipe(
+        id="tar_kiln",
+        name="Teerbrennerei",
+        inputs={"Holz": 3},
+        outputs={"Teer": 4},
+        upkeep=2,
+    ),
+    "grand_brewery": ProductionRecipe(
+        id="grand_brewery",
+        name="Grossbrauerei",
+        inputs={"Getreide": 4, "Hopfen": 2, "Holz": 1},
+        outputs={"Bier": 10},
+        upkeep=4,
+    ),
+    "spice_trade": ProductionRecipe(
+        id="spice_trade",
+        name="Gewuerzhandel",
+        inputs={},
+        outputs={"Gewuerze": 4},
+        upkeep=3,
+    ),
+    "copper_mine": ProductionRecipe(
+        id="copper_mine",
+        name="Kupfermine",
+        inputs={},
+        outputs={"Kupfer": 4},
+        upkeep=2,
+    ),
+    "spice_refinery": ProductionRecipe(
+        id="spice_refinery",
+        name="Gewuerzraffinerie",
+        inputs={"Gewuerze": 4},
+        outputs={"Luxuswaren": 6},
+        upkeep=5,
+    ),
+    "tobacco_farm": ProductionRecipe(
+        id="tobacco_farm",
+        name="Tabakplantage",
+        inputs={},
+        outputs={"Tabak": 5},
+        upkeep=2,
+    ),
+    "sugar_farm": ProductionRecipe(
+        id="sugar_farm",
+        name="Zuckerplantage",
+        inputs={},
+        outputs={"Zucker": 5},
+        upkeep=2,
+    ),
+    "sugar_refinery": ProductionRecipe(
+        id="sugar_refinery",
+        name="Zuckerraffinerie",
+        inputs={"Zucker": 5},
+        outputs={"Luxuswaren": 6},
+        upkeep=4,
+    ),
+    "coffee_farm": ProductionRecipe(
+        id="coffee_farm",
+        name="Kaffeeplantage",
+        inputs={},
+        outputs={"Kaffee": 5},
+        upkeep=2,
+    ),
+    "cotton_farm": ProductionRecipe(
+        id="cotton_farm",
+        name="Baumwollfarm",
+        inputs={},
+        outputs={"Baumwolle": 5},
+        upkeep=2,
+    ),
+    "textile_factory": ProductionRecipe(
+        id="textile_factory",
+        name="Textilmanufaktur",
+        inputs={"Baumwolle": 5},
+        outputs={"Tuch": 7},
+        upkeep=4,
+    ),
+    "coal_mine": ProductionRecipe(
+        id="coal_mine",
+        name="Kohlemine",
+        inputs={},
+        outputs={"Kohle": 6},
+        upkeep=2,
+    ),
+    "steel_mill": ProductionRecipe(
+        id="steel_mill",
+        name="Stahlwerk",
+        inputs={"Kohle": 4, "Kupfer": 2},
+        outputs={"Stahl": 5},
+        upkeep=5,
+    ),
+    "refinery": ProductionRecipe(
+        id="refinery",
+        name="Raffinerie",
+        inputs={"Kohle": 5},
+        outputs={"Treibstoff": 6},
+        upkeep=6,
+    ),
+    "electronics_factory": ProductionRecipe(
+        id="electronics_factory",
+        name="Elektronikfabrik",
+        inputs={"Stahl": 3, "Kupfer": 2},
+        outputs={"Elektronik": 5},
+        upkeep=6,
+    ),
+    "rare_earth_mine": ProductionRecipe(
+        id="rare_earth_mine",
+        name="Seltene Erden Mine",
+        inputs={},
+        outputs={"Seltene Erden": 4},
+        upkeep=4,
+    ),
+    "chip_factory": ProductionRecipe(
+        id="chip_factory",
+        name="Chipfabrik",
+        inputs={"Seltene Erden": 3},
+        outputs={"Mikrochips": 5},
+        upkeep=8,
+    ),
 }
 
 
@@ -114,7 +332,8 @@ class HanseGame:
         )
         self.world_economy = WorldEconomy()
         self.npcs: List[NPCTrader] = []
-        self.last_world_tick: Dict[str, int] = {"producing_buildings": 0, "npc_trades": 0}
+        self.last_world_tick: Dict[str, int] = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
+        self.last_dividend_pools: Dict[str, Dict[str, int]] = {}
         self._ensure_world_state(reset_world=True, reset_npcs=True)
 
     def _active_goods(self) -> Dict[str, Dict[str, float]]:
@@ -124,7 +343,7 @@ class HanseGame:
         return list(self._active_goods().keys())
 
     def _active_shipyard(self) -> List[Tuple[str, int, int, int]]:
-        return shipyard_for_year(self.current_year)
+        return modern_shipyard_for_year(self.current_year)
 
     def _fleet_synergy_shipyard(self) -> List[Tuple[str, int, int, int]]:
         return shipyard_for_year(STARTING_YEAR)
@@ -148,14 +367,56 @@ class HanseGame:
         span = WORLD_INITIAL_STOCK_MAX - WORLD_INITIAL_STOCK_MIN + 1
         return WORLD_INITIAL_STOCK_MIN + (int.from_bytes(digest[:8], "big") % span)
 
+    def _current_century(self) -> int:
+        return year_to_century(self.current_year)
+
+    def _unlocked_recipe_ids(self, century: int | None = None) -> List[str]:
+        century_i = century if century is not None else self._current_century()
+        return [
+            recipe_id
+            for recipe_id in sorted(
+                PRODUCTION_RECIPES.keys(),
+                key=lambda rid: (RECIPE_UNLOCK_CENTURY.get(rid, 14), rid),
+            )
+            if RECIPE_UNLOCK_CENTURY.get(recipe_id, 14) <= century_i
+        ]
+
+    def _city_building_level(self, city_name: str, recipe_id: str) -> int:
+        city_bonus = CITY_RECIPE_LEVEL_BONUS.get(city_name, {})
+        return max(1, int(city_bonus.get(recipe_id, 1)))
+
     def _default_city_buildings(self, city_name: str) -> List[Building]:
-        if city_name == "Luebeck":
-            return [Building(id="brewery", level=2), Building(id="fishery", level=1)]
-        if city_name == "Bergen":
-            return [Building(id="woodcutter", level=2), Building(id="fishery", level=1)]
-        if city_name in {"Novgorod", "Riga"}:
-            return [Building(id="salt_mine", level=1), Building(id="woodcutter", level=1)]
-        return [Building(id="woodcutter", level=1)]
+        return [
+            Building(id=recipe_id, level=self._city_building_level(city_name, recipe_id))
+            for recipe_id in self._unlocked_recipe_ids()
+        ]
+
+    def _sync_city_buildings_for_century(self, city_name: str, buildings: List[Building]) -> List[Building]:
+        result: List[Building] = []
+        seen: set[str] = set()
+        for building in buildings:
+            if building.id in seen:
+                continue
+            seen.add(building.id)
+            result.append(
+                Building(
+                    id=building.id,
+                    level=max(1, int(building.level)),
+                    active=bool(building.active),
+                )
+            )
+        for recipe_id in self._unlocked_recipe_ids():
+            if recipe_id in seen:
+                continue
+            seen.add(recipe_id)
+            result.append(
+                Building(
+                    id=recipe_id,
+                    level=self._city_building_level(city_name, recipe_id),
+                    active=True,
+                )
+            )
+        return result
 
     def _default_npcs(self) -> List[NPCTrader]:
         goods = self._active_good_names()
@@ -214,7 +475,10 @@ class HanseGame:
                         active=bool(building.active),
                     )
                 )
-            city.buildings = sanitized_buildings or self._default_city_buildings(city_name)
+            city.buildings = self._sync_city_buildings_for_century(
+                city_name,
+                sanitized_buildings or self._default_city_buildings(city_name),
+            )
             try:
                 city.treasury = int(city.treasury)
             except (TypeError, ValueError):
@@ -276,41 +540,158 @@ class HanseGame:
             city.inventory[good_name] = stock - taken
         return taken
 
+    def _player_city_influence(self, player: Player, city_name: str) -> float:
+        return max(0.0, float(player.city_influence.get(city_name, 0.0)))
+
+    def _add_player_city_influence(self, player: Player, city_name: str, amount: float) -> None:
+        if amount == 0:
+            return
+        current = max(0.0, float(player.city_influence.get(city_name, 0.0)))
+        player.city_influence[city_name] = max(0.0, current + float(amount))
+
+    def _player_building_share_percent(self, player: Player, city_name: str, recipe_id: str) -> float:
+        city_shares = player.building_shares.get(city_name, {})
+        return max(0.0, min(MAX_BUILDING_SHARE_PERCENT, float(city_shares.get(recipe_id, 0.0))))
+
+    def _set_player_building_share_percent(self, player: Player, city_name: str, recipe_id: str, pct: float) -> None:
+        if city_name not in player.building_shares:
+            player.building_shares[city_name] = {}
+        player.building_shares[city_name][recipe_id] = max(0.0, min(MAX_BUILDING_SHARE_PERCENT, float(pct)))
+
+    def _total_building_share_percent(
+        self,
+        city_name: str,
+        recipe_id: str,
+        *,
+        exclude_player: Player | None = None,
+    ) -> float:
+        total = 0.0
+        for player in self.players:
+            if exclude_player is not None and player is exclude_player:
+                continue
+            total += self._player_building_share_percent(player, city_name, recipe_id)
+        return max(0.0, total)
+
+    def _share_price_per_percent(self, city_name: str, building: Building) -> int:
+        recipe = PRODUCTION_RECIPES.get(building.id)
+        if recipe is None:
+            return 120
+        active_goods = self._active_goods()
+        weighted_output = 0
+        for good_name, qty in recipe.outputs.items():
+            base_price = int(active_goods.get(good_name, {}).get("base_price", 40))
+            weighted_output += max(0, int(qty)) * base_price
+        weighted_input = 0
+        for good_name, qty in recipe.inputs.items():
+            base_price = int(active_goods.get(good_name, {}).get("base_price", 30))
+            weighted_input += max(0, int(qty)) * base_price
+        century_bonus = max(0, RECIPE_UNLOCK_CENTURY.get(building.id, 14) - 14) * 10
+        level_bonus = max(1, int(building.level)) * 30
+        model_price = 90 + (weighted_output // 4) - (weighted_input // 7) + level_bonus + century_bonus
+        return max(60, model_price)
+
+    def _city_is_bankrupt(self, city_name: str) -> bool:
+        return self._city_economy(city_name).treasury <= CITY_BANKRUPTCY_LIMIT
+
+    def _building_dividend_pool(self, city_name: str, recipe_id: str) -> int:
+        city_pool = self.last_dividend_pools.get(city_name, {})
+        return max(0, int(city_pool.get(recipe_id, 0)))
+
+    def _apply_passive_income(self, player: Player) -> None:
+        self._ensure_world_state()
+        total_dividend = 0
+        detail: List[str] = []
+        for city_name, share_map in player.building_shares.items():
+            if not isinstance(share_map, dict):
+                continue
+            city = self._city_economy(city_name)
+            for recipe_id, pct_raw in share_map.items():
+                share_pct = max(0.0, min(MAX_BUILDING_SHARE_PERCENT, float(pct_raw)))
+                if share_pct <= 0:
+                    continue
+                pool = self._building_dividend_pool(city_name, recipe_id)
+                if pool <= 0:
+                    continue
+                payout = int(round(pool * (share_pct / 100.0)))
+                if payout <= 0:
+                    continue
+                affordable = max(0, int(city.treasury))
+                actual = min(payout, affordable)
+                if actual <= 0:
+                    continue
+                city.treasury -= actual
+                total_dividend += actual
+                self._add_player_city_influence(
+                    player,
+                    city_name,
+                    (actual / 1000.0) * INFLUENCE_PER_DIVIDEND_1000,
+                )
+                recipe = PRODUCTION_RECIPES.get(recipe_id)
+                recipe_name = recipe.name if recipe else recipe_id
+                detail.append(f"{city_name}:{recipe_name} +{actual}")
+        if total_dividend > 0:
+            player.money += total_dividend
+            summary = ", ".join(detail[:3])
+            if len(detail) > 3:
+                summary += ", ..."
+            print(f"Passive Rendite: +{total_dividend} Mark ({summary})")
+
     def _tick_world_production(self) -> int:
         self._ensure_world_state()
         active_goods = set(self._active_good_names())
+        current_century = self._current_century()
         active_buildings = 0
+        self.last_dividend_pools = {city_name: {} for city_name in CITIES}
         for city_name in CITIES:
             city = self._city_economy(city_name)
+            city.treasury += len(city.buildings) * CITY_TREASURY_BASE_INCOME_PER_BUILDING
             for good_name, base_qty in BASE_CITY_CONSUMPTION.items():
                 if good_name not in active_goods:
                     continue
                 current = max(0, int(city.inventory.get(good_name, 0)))
                 city.inventory[good_name] = max(0, current - max(0, int(base_qty)))
 
-            for building in city.buildings:
+            city_bankrupt = city.treasury <= CITY_BANKRUPTCY_LIMIT
+            for idx, building in enumerate(city.buildings):
                 if not building.active:
                     continue
                 recipe = PRODUCTION_RECIPES.get(building.id)
                 if recipe is None:
                     continue
+                if RECIPE_UNLOCK_CENTURY.get(building.id, 14) > current_century:
+                    continue
+                if city_bankrupt and (idx % 2 == 1):
+                    continue
                 level = max(1, int(building.level))
                 can_run = True
+                input_total = 0
                 for good_name, qty in recipe.inputs.items():
                     required = max(0, int(qty)) * level
                     if city.inventory.get(good_name, 0) < required:
                         can_run = False
                         break
+                    input_total += required
                 if not can_run:
                     continue
 
+                output_total = 0
                 for good_name, qty in recipe.inputs.items():
                     required = max(0, int(qty)) * level
                     city.inventory[good_name] = max(0, int(city.inventory.get(good_name, 0)) - required)
                 for good_name, qty in recipe.outputs.items():
                     produced = max(0, int(qty)) * level
                     city.inventory[good_name] = int(city.inventory.get(good_name, 0)) + produced
+                    output_total += produced
                 city.treasury -= max(0, int(recipe.upkeep)) * level
+                operating_value = max(
+                    0,
+                    (output_total * 6) - (input_total * 3) - (max(0, int(recipe.upkeep)) * level * 2),
+                )
+                dividend_pool = int(round(operating_value * DIVIDEND_POOL_FACTOR))
+                if dividend_pool > 0:
+                    city_pool = self.last_dividend_pools.setdefault(city_name, {})
+                    city_pool[building.id] = city_pool.get(building.id, 0) + dividend_pool
+                    city.treasury += max(0, dividend_pool // 6)
                 active_buildings += 1
         return active_buildings
 
@@ -381,13 +762,371 @@ class HanseGame:
     def _run_world_month_tick(self) -> Dict[str, int]:
         production_count = self._tick_world_production()
         npc_trade_count = self._tick_world_npcs()
+        bankrupt_count = sum(1 for city_name in CITIES if self._city_is_bankrupt(city_name))
         # NPCs handeln vor dem Spieler. Danach bleiben Preise fuer den Monat gecached stabil.
         self._market_cache.clear()
         self.last_world_tick = {
             "producing_buildings": production_count,
             "npc_trades": npc_trade_count,
+            "cities_bankrupt": bankrupt_count,
         }
         return dict(self.last_world_tick)
+
+    def _can_building_run(self, city: CityEconomy, building: Building) -> bool:
+        recipe = PRODUCTION_RECIPES.get(building.id)
+        if recipe is None or not building.active:
+            return False
+        if RECIPE_UNLOCK_CENTURY.get(building.id, 14) > self._current_century():
+            return False
+        level = max(1, int(building.level))
+        for good_name, qty in recipe.inputs.items():
+            required = max(0, int(qty)) * level
+            if city.inventory.get(good_name, 0) < required:
+                return False
+        return True
+
+    def _show_city_economy(self, city_name: str, player: Player | None = None) -> None:
+        city = self._city_economy(city_name)
+        prices = self._market_prices(city_name)
+        city_status = "BANKROTTGEFAEHRDET" if self._city_is_bankrupt(city_name) else "stabil"
+        print()
+        print("=" * 70)
+        print(f"WELTWIRTSCHAFT: {city_name}")
+        print(f"Stadtkasse: {city.treasury} | Status: {city_status} | Betriebe: {len(city.buildings)}")
+        if player is not None:
+            influence = self._player_city_influence(player, city_name)
+            share_sum = sum(self._player_building_share_percent(player, city_name, b.id) for b in city.buildings)
+            print(f"Ihr Einfluss: {influence:.1f} | Ihr Anteilsportfolio: {share_sum:.1f}%")
+        print("-" * 70)
+        print("Betriebe:")
+        for idx, building in enumerate(city.buildings, start=1):
+            recipe = PRODUCTION_RECIPES.get(building.id)
+            if recipe is None:
+                continue
+            level = max(1, int(building.level))
+            status = "aktiv" if building.active else "inaktiv"
+            unlock_century = RECIPE_UNLOCK_CENTURY.get(building.id, 14)
+            if unlock_century > self._current_century():
+                run_state = f"gesperrt bis C{unlock_century}"
+            else:
+                run_state = "produziert" if self._can_building_run(city, building) else "wartet auf Inputs"
+            inputs = ", ".join(
+                f"{good_name} x{max(0, int(qty)) * level}" for good_name, qty in recipe.inputs.items()
+            ) or "-"
+            outputs = ", ".join(
+                f"{good_name} x{max(0, int(qty)) * level}" for good_name, qty in recipe.outputs.items()
+            ) or "-"
+            upkeep = max(0, int(recipe.upkeep)) * level
+            own_pct = self._player_building_share_percent(player, city_name, building.id) if player else 0.0
+            sold_pct = self._total_building_share_percent(city_name, building.id)
+            price_per_pct = self._share_price_per_percent(city_name, building)
+            dividend_pool = self._building_dividend_pool(city_name, building.id)
+            print(
+                f" {idx:>2}) {recipe.name:14} | Level {level} | {status:7} | {run_state:17} | "
+                f"Input [{inputs}] -> Output [{outputs}] | Unterhalt {upkeep} | "
+                f"Anteile Ihr {own_pct:.1f}% / Markt {sold_pct:.1f}% | Kurs {price_per_pct}/1% | DivPool {dividend_pool}"
+            )
+        print("-" * 70)
+        print("Marktbestaende:")
+        for good_name in self._active_good_names():
+            stock = city.inventory.get(good_name, 0)
+            scarcity = city.scarcity_factor(good_name)
+            price = prices.get(good_name, 0)
+            print(f"  {good_name:14} Bestand {stock:>4} | Faktor x{scarcity:.2f} | Preis {price:>4}")
+        print("=" * 70)
+
+    def _buy_city_shares_menu(self, player: Player, city_name: str) -> None:
+        city = self._city_economy(city_name)
+        current_century = self._current_century()
+        available_buildings = [
+            building
+            for building in city.buildings
+            if RECIPE_UNLOCK_CENTURY.get(building.id, 14) <= current_century
+        ]
+        if not available_buildings:
+            print("Keine freigeschalteten Betriebe in dieser Stadt.")
+            return
+        print("Betrieb fuer Anteilskauf waehlen:")
+        for idx, building in enumerate(available_buildings, start=1):
+            recipe = PRODUCTION_RECIPES.get(building.id)
+            if recipe is None:
+                continue
+            price_per_pct = self._share_price_per_percent(city_name, building)
+            sold_pct = self._total_building_share_percent(city_name, building.id)
+            own_pct = self._player_building_share_percent(player, city_name, building.id)
+            print(
+                f"{idx}) {recipe.name:16} Kurs {price_per_pct:>4}/1% | "
+                f"frei {max(0.0, MAX_BUILDING_SHARE_PERCENT - sold_pct):>5.1f}% | Ihr {own_pct:>5.1f}%"
+            )
+        print("0) Zurueck")
+        choice = self._ask_int(f"Betrieb (0-{len(available_buildings)}): ", 0, len(available_buildings))
+        if choice == 0:
+            return
+        building = available_buildings[choice - 1]
+        recipe = PRODUCTION_RECIPES.get(building.id)
+        if recipe is None:
+            return
+        sold_pct = self._total_building_share_percent(city_name, building.id)
+        free_pct = max(0.0, MAX_BUILDING_SHARE_PERCENT - sold_pct)
+        if free_pct < 1.0:
+            print("Keine freien Anteile mehr.")
+            return
+        price_per_pct = self._share_price_per_percent(city_name, building)
+        max_by_money = int(player.money // max(1, price_per_pct))
+        max_pct = int(min(free_pct, max_by_money, 40))
+        if max_pct <= 0:
+            print("Nicht genug Mark fuer Anteilskauf.")
+            return
+        pct = self._ask_int(f"Anteil kaufen in % (1-{max_pct}): ", 1, max_pct)
+        cost = int(round(pct * price_per_pct))
+        if cost > player.money:
+            print("Nicht genug Mark.")
+            return
+        player.money -= cost
+        city.treasury += int(round(cost * 0.45))
+        new_pct = self._player_building_share_percent(player, city_name, building.id) + pct
+        self._set_player_building_share_percent(player, city_name, building.id, new_pct)
+        self._add_player_city_influence(player, city_name, pct * INFLUENCE_PER_SHARE_PURCHASE)
+        print(
+            f"Anteile gekauft: {pct}% an {recipe.name} fuer {cost} Mark. "
+            f"Ihr Anteil: {self._player_building_share_percent(player, city_name, building.id):.1f}%"
+        )
+
+    def _bailout_city(self, player: Player, city_name: str) -> None:
+        city = self._city_economy(city_name)
+        influence = self._player_city_influence(player, city_name)
+        if influence < MIN_BAILOUT_INFLUENCE:
+            print(
+                f"Zu wenig Einfluss in {city_name}. Benoetigt: {MIN_BAILOUT_INFLUENCE:.1f}, "
+                f"vorhanden: {influence:.1f}."
+            )
+            return
+        if player.money < BAILOUT_MIN_AMOUNT:
+            print(f"Mindestens {BAILOUT_MIN_AMOUNT} Mark fuer Rettungsfonds noetig.")
+            return
+        amount = self._ask_int(f"Rettungsfonds einzahlen ({BAILOUT_MIN_AMOUNT}-{player.money}): ", BAILOUT_MIN_AMOUNT, player.money)
+        rescue_bonus = min(0.60, influence / 200.0)
+        treasury_gain = int(round(amount * (1.0 + rescue_bonus)))
+        player.money -= amount
+        city.treasury += treasury_gain
+        self._add_player_city_influence(player, city_name, -BAILOUT_INFLUENCE_COST)
+        post_status = "stabilisiert" if city.treasury >= CITY_RECOVERY_TARGET else "weiter kritisch"
+        print(
+            f"Rettungsfonds: {amount} Mark investiert, Stadtkasse +{treasury_gain}. "
+            f"Status: {post_status} ({city.treasury})."
+        )
+        player.chronicle.append(
+            f"ANNO {self.current_year}: Rettungsfonds fuer {city_name} ({amount} Mark, Effekt {treasury_gain})."
+        )
+
+    def _world_economy_menu(self, player: Player) -> None:
+        while True:
+            print()
+            print("=== Weltwirtschaft ===")
+            for idx, city_name in enumerate(CITIES, start=1):
+                city = self._city_economy(city_name)
+                influence = self._player_city_influence(player, city_name)
+                status = "BANKROTT" if self._city_is_bankrupt(city_name) else "stabil"
+                print(
+                    f"{idx}) {city_name:10} | Betriebe {len(city.buildings):>2} | "
+                    f"Stadtkasse {city.treasury:>6} | {status:8} | Einfluss {influence:>5.1f}"
+                )
+            print("0) Zurueck")
+            choice = self._ask_int(f"Stadt waehlen (0-{len(CITIES)}): ", 0, len(CITIES))
+            if choice == 0:
+                return
+            city_name = CITIES[choice - 1]
+            while True:
+                self._show_city_economy(city_name, player)
+                print("1) Anteile kaufen  2) Rettungsfonds  3) Zurueck")
+                action = self._ask_int("Auswahl: ", 1, 3)
+                if action == 1:
+                    self._buy_city_shares_menu(player, city_name)
+                elif action == 2:
+                    self._bailout_city(player, city_name)
+                else:
+                    break
+
+    def _preferred_export_dir(self) -> Path:
+        fallback = self.save_dir / "exports"
+        is_android = ("ANDROID_ARGUMENT" in os.environ) or (sys.platform == "android")
+        if not is_android:
+            return fallback
+
+        candidates: List[Path] = []
+        env_download = os.getenv("DOWNLOAD_DIR", "").strip()
+        if env_download:
+            candidates.append(Path(env_download))
+        external_storage = os.getenv("EXTERNAL_STORAGE", "").strip()
+        if external_storage:
+            candidates.append(Path(external_storage) / "Download")
+        candidates.extend(
+            [
+                Path("/storage/emulated/0/Download"),
+                Path("/storage/self/primary/Download"),
+                Path("/sdcard/Download"),
+            ]
+        )
+
+        seen: set[str] = set()
+        for candidate in candidates:
+            key = str(candidate)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                return candidate
+            except OSError:
+                continue
+        return Path("/storage/emulated/0/Download")
+
+    def _export_csv_report(self, player: Player) -> Path | None:
+        self._ensure_world_state()
+        export_dir = self._preferred_export_dir()
+        try:
+            export_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = export_dir / f"hanse_report_{self.current_year}_{self.current_month:02d}_{stamp}.csv"
+            headers = ["section", "entity", "subentity", "key", "value", "unit", "note"]
+            with path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle, delimiter=";")
+                writer.writerow(headers)
+
+                def row(
+                    section: str,
+                    entity: str,
+                    subentity: str,
+                    key: str,
+                    value: Any,
+                    unit: str = "",
+                    note: str = "",
+                ) -> None:
+                    writer.writerow([section, entity, subentity, key, value, unit, note])
+
+                row("snapshot", "game", "", "year", self.current_year)
+                row("snapshot", "game", "", "month", self.current_month)
+                row("snapshot", "game", "", "sea_state", self.current_sea_state)
+                row("snapshot", "game", "", "source_player", player.name)
+                row("atheria", "macro", "", "global_growth", f"{self.economy_state.global_growth:.4f}")
+                row("atheria", "macro", "", "global_price_level", f"{self.economy_state.global_price_level:.4f}")
+                row("atheria", "macro", "", "resource_scarcity", f"{self.economy_state.resource_scarcity:.4f}")
+
+                for city_name in CITIES:
+                    city = self._city_economy(city_name)
+                    row("city", city_name, "", "treasury", city.treasury, "Mark")
+                    row("city", city_name, "", "bankrupt", int(self._city_is_bankrupt(city_name)))
+                    row("city", city_name, "", "building_count", len(city.buildings), "count")
+                    prices = self._market_prices(city_name)
+                    for good_name in self._active_good_names():
+                        stock = city.inventory.get(good_name, 0)
+                        row("city_inventory", city_name, good_name, "stock", stock, "units")
+                        row(
+                            "city_inventory",
+                            city_name,
+                            good_name,
+                            "scarcity_factor",
+                            f"{city.scarcity_factor(good_name):.4f}",
+                        )
+                        row("city_inventory", city_name, good_name, "market_price", prices.get(good_name, 0), "Mark")
+                    for idx, building in enumerate(city.buildings, start=1):
+                        recipe = PRODUCTION_RECIPES.get(building.id)
+                        recipe_name = recipe.name if recipe else building.id
+                        row("building", city_name, f"{idx}", "id", building.id)
+                        row("building", city_name, f"{idx}", "name", recipe_name)
+                        row("building", city_name, f"{idx}", "level", max(1, int(building.level)))
+                        row("building", city_name, f"{idx}", "active", int(bool(building.active)))
+                        row("building", city_name, f"{idx}", "can_run_now", int(self._can_building_run(city, building)))
+                        if recipe:
+                            row("building", city_name, f"{idx}", "inputs", json.dumps(recipe.inputs, ensure_ascii=False))
+                            row("building", city_name, f"{idx}", "outputs", json.dumps(recipe.outputs, ensure_ascii=False))
+                            row("building", city_name, f"{idx}", "upkeep", max(0, int(recipe.upkeep)), "Mark")
+
+                for npc in self.npcs:
+                    row("npc", npc.name, "", "city", npc.city)
+                    row("npc", npc.name, "", "money", npc.money, "Mark")
+                    row("npc", npc.name, "", "ship", npc.ship.display_name)
+                    row("npc", npc.name, "", "cargo_total", npc.ship.total_cargo, "units")
+                    for good_name in self._active_good_names():
+                        qty = npc.ship.cargo.get(good_name, 0)
+                        if qty > 0:
+                            row("npc_cargo", npc.name, good_name, "qty", qty, "units")
+
+                for p in self.players:
+                    city_prices = self._market_prices(p.city)
+                    row("player", p.name, "", "city", p.city)
+                    row("player", p.name, "", "money", p.money, "Mark")
+                    row("player", p.name, "", "debt", p.debt, "Mark")
+                    row("player", p.name, "", "reputation", p.reputation)
+                    row("player", p.name, "", "age", p.age, "years")
+                    row("player", p.name, "", "net_worth", self._net_worth(p, city_prices), "Mark")
+                    for city_name, score in p.city_influence.items():
+                        row("player_influence", p.name, city_name, "score", f"{float(score):.2f}")
+                    for mission_key, mission_data in p.missions.items():
+                        state = mission_data.get("state", "inactive") if isinstance(mission_data, dict) else "inactive"
+                        row("player_mission", p.name, mission_key, "state", state)
+                    for city_name, share_map in p.building_shares.items():
+                        if not isinstance(share_map, dict):
+                            continue
+                        for recipe_id, share_pct in share_map.items():
+                            recipe = PRODUCTION_RECIPES.get(recipe_id)
+                            row(
+                                "player_share",
+                                p.name,
+                                f"{city_name}:{recipe_id}",
+                                "share_pct",
+                                f"{float(share_pct):.2f}",
+                                "%",
+                                recipe.name if recipe else recipe_id,
+                            )
+                    building_quests = p.missions.get("building_quests", {})
+                    if isinstance(building_quests, dict):
+                        for recipe_id, quest_data in building_quests.items():
+                            if not isinstance(quest_data, dict):
+                                continue
+                            recipe = PRODUCTION_RECIPES.get(recipe_id)
+                            recipe_name = recipe.name if recipe else recipe_id
+                            row(
+                                "player_building_quest",
+                                p.name,
+                                recipe_id,
+                                "recipe_name",
+                                recipe_name,
+                            )
+                            row(
+                                "player_building_quest",
+                                p.name,
+                                recipe_id,
+                                "tier",
+                                max(0, int(quest_data.get("tier", 0))),
+                                "of_8",
+                            )
+                            row(
+                                "player_building_quest",
+                                p.name,
+                                recipe_id,
+                                "progress",
+                                max(0, int(quest_data.get("progress", 0))),
+                                "units",
+                            )
+                            row(
+                                "player_building_quest",
+                                p.name,
+                                recipe_id,
+                                "state",
+                                str(quest_data.get("state", "inactive")),
+                            )
+                    for idx, ship in enumerate(p.ships, start=1):
+                        row("player_ship", p.name, f"{idx}", "name", ship.display_name)
+                        row("player_ship", p.name, f"{idx}", "city", ship.city)
+                        row("player_ship", p.name, f"{idx}", "cargo_capacity", ship.cargo_capacity, "units")
+                        row("player_ship", p.name, f"{idx}", "cargo_total", ship.total_cargo, "units")
+                        row("player_ship", p.name, f"{idx}", "hull", ship.hull, "%")
+                        row("player_ship", p.name, f"{idx}", "rigging", ship.rigging, "%")
+                        row("player_ship", p.name, f"{idx}", "cannons", ship.cannons, "count")
+            return path
+        except OSError:
+            return None
 
     def run(self) -> None:
         self._print_banner()
@@ -413,7 +1152,8 @@ class HanseGame:
             print(f"Atheria-Wirtschaft: {self.economy_state.summary}")
             print(
                 f"Weltmarkt: Produktion aktiv {world_tick.get('producing_buildings', 0)} Betriebe | "
-                f"NPC-Deals {world_tick.get('npc_trades', 0)} von {len(self.npcs)}"
+                f"NPC-Deals {world_tick.get('npc_trades', 0)} von {len(self.npcs)} | "
+                f"Bankrott-Staedte {world_tick.get('cities_bankrupt', 0)}"
             )
             print("=" * 60)
             for player in self.players:
@@ -640,9 +1380,10 @@ class HanseGame:
         while True:
             print()
             print(
-                "1) Status  2) Markt  3) Reise  4) Hafen  5) Investition  6) Runde Ende  7) Speichern  8) Missionen"
+                "1) Status  2) Markt  3) Reise  4) Hafen  5) Investition  6) Runde Ende  "
+                "7) Speichern  8) Missionen  9) Weltwirtschaft  10) CSV-Export"
             )
-            choice = self._ask_int("Auswahl: ", 1, 8)
+            choice = self._ask_int("Auswahl: ", 1, 10)
             if choice == 1:
                 self._show_status(player)
             elif choice == 2:
@@ -661,6 +1402,14 @@ class HanseGame:
                 self._save_game_menu()
             elif choice == 8:
                 self._missions_menu(player)
+            elif choice == 9:
+                self._world_economy_menu(player)
+            elif choice == 10:
+                csv_path = self._export_csv_report(player)
+                if csv_path:
+                    print(f"CSV exportiert: {csv_path}")
+                else:
+                    print("CSV-Export fehlgeschlagen.")
         if player.alive:
             self._end_of_turn(player)
 
@@ -674,6 +1423,8 @@ class HanseGame:
         print(f"Mark: {player.money} | Schulden: {player.debt} | Ruf: {player.reputation}")
         print(f"Ladungen: {player.total_cargo}/{player.ship.cargo_capacity} | Warenwert: {cargo_value}")
         print(f"Gesamtwert: {net}")
+        influence = self._player_city_influence(player, player.city)
+        print(f"Politischer Einfluss in {player.city}: {influence:.1f}")
         print(
             f"Atheria: Wachstum {self.economy_state.global_growth:.2f} | "
             f"Preisniveau {self.economy_state.global_price_level:.2f} | "
@@ -763,6 +1514,7 @@ class HanseGame:
         player.reputation = min(200, player.reputation + 1)
         print(f"Verkauft: {qty} {good_name} fuer {revenue} Mark.")
         self._record_hanse_delivery(player, player.city, good_name, qty)
+        self._record_trade_for_missions(player, good_name, qty)
 
     def _travel_menu(self, player: Player) -> None:
         destinations = [city for city in CITIES if city != player.city]
@@ -781,6 +1533,7 @@ class HanseGame:
         player.money -= travel_cost
         old_city = player.city
         player.city = target
+        self._record_city_visit(player, target)
         player.chronicle.append(f"ANNO {self.current_year}: Von {old_city} nach {target} gesegelt.")
         print(f"Eingetroffen: {target}. Reisekosten: {travel_cost} Mark.")
         self._resolve_travel_risk(player, old_city, target)
@@ -935,6 +1688,8 @@ class HanseGame:
     def _missions_menu(self, player: Player) -> None:
         self._init_missions(player)
         self._update_fleet_synergy(player)
+        self._update_route_master(player)
+        self._update_arms_race(player)
         print()
         print("=== Missionen ===")
         month_index = self._month_index()
@@ -995,6 +1750,70 @@ class HanseGame:
                 f"   Kinder {player.children}/{DYNASTY_CHILDREN_TARGET} | Kapital {player.money}/{target_fund} | Alter < {DYNASTY_AGE_LIMIT}"
             )
 
+        mission = player.missions.get("brewmaster", {})
+        state = mission.get("state", "active")
+        print("5) Braumeisterbund")
+        delivered = int(mission.get("delivered", 0))
+        target = int(mission.get("target", QUEST_BREWMASTER_TARGET))
+        if state == "completed":
+            print(f"   Abgeschlossen: {delivered}/{target} Bier gehandelt.")
+        else:
+            print(f"   Fortschritt: {delivered}/{target} Bier verkaufen.")
+
+        mission = player.missions.get("timber_trade", {})
+        state = mission.get("state", "active")
+        print("6) Nordholz-Vertrag")
+        delivered = int(mission.get("delivered", 0))
+        target = int(mission.get("target", QUEST_TIMBER_TARGET))
+        if state == "completed":
+            print(f"   Abgeschlossen: {delivered}/{target} Holz gehandelt.")
+        else:
+            print(f"   Fortschritt: {delivered}/{target} Holz verkaufen.")
+
+        mission = player.missions.get("route_master", {})
+        state = mission.get("state", "active")
+        print("7) Routenmeister")
+        visited = [str(city_name) for city_name in mission.get("visited", [])]
+        target = int(mission.get("target", QUEST_ROUTE_MASTER_TARGET_CITIES))
+        if state == "completed":
+            print(f"   Abgeschlossen: {len(visited)}/{target} Staedte besucht.")
+        else:
+            print(f"   Fortschritt: {len(visited)}/{target} Staedte besucht.")
+
+        mission = player.missions.get("arms_race", {})
+        state = mission.get("state", "active")
+        print("8) Arsenal der Hanse")
+        cannons = sum(ship.cannons for ship in player.ships)
+        ships_count = len(player.ships)
+        target_cannons = int(mission.get("target_cannons", QUEST_ARMS_RACE_TARGET_CANNONS))
+        target_ships = int(mission.get("target_ships", QUEST_ARMS_RACE_TARGET_SHIPS))
+        if state == "completed":
+            print(f"   Abgeschlossen: {ships_count}/{target_ships} Schiffe, {cannons}/{target_cannons} Kanonen.")
+        else:
+            print(f"   Fortschritt: {ships_count}/{target_ships} Schiffe, {cannons}/{target_cannons} Kanonen.")
+
+        print("9) Betriebskampagnen (8 Stufen je Betrieb)")
+        building_quests = player.missions.get("building_quests", {})
+        unlocked_recipe_ids = self._unlocked_recipe_ids()
+        total_tiers = len(unlocked_recipe_ids) * BUILDING_QUEST_TIERS
+        completed_tiers = 0
+        for recipe_id in unlocked_recipe_ids:
+            entry = building_quests.get(recipe_id, {})
+            completed_tiers += min(BUILDING_QUEST_TIERS, max(0, int(entry.get("tier", 0))))
+        print(f"   Gesamtfortschritt: {completed_tiers}/{total_tiers} Queststufen")
+        for recipe_id in unlocked_recipe_ids:
+            recipe = PRODUCTION_RECIPES.get(recipe_id)
+            if recipe is None:
+                continue
+            entry = building_quests.get(recipe_id, {})
+            tier = min(BUILDING_QUEST_TIERS, max(0, int(entry.get("tier", 0))))
+            if tier >= BUILDING_QUEST_TIERS:
+                print(f"   {recipe.name:18} 8/8 abgeschlossen")
+                continue
+            progress = max(0, int(entry.get("progress", 0)))
+            target = self._building_quest_target(recipe_id, tier)
+            print(f"   {recipe.name:18} Stufe {tier + 1}/8: {progress}/{target}")
+
     def _resolve_investments(self, player: Player) -> None:
         remaining: List[Investment] = []
         for inv in player.investments:
@@ -1033,6 +1852,7 @@ class HanseGame:
 
         self._init_missions(player)
         self._update_fleet_synergy(player)
+        self._apply_passive_income(player)
 
         growth = self.economy_state.global_growth
         price_level = self.economy_state.global_price_level
@@ -1131,6 +1951,7 @@ class HanseGame:
         city_macro = self.economy_state.city_factor(city)
         city_economy = self._city_economy(city)
         global_price_level = self.economy_state.global_price_level
+        bankruptcy_factor = 1.10 if self._city_is_bankrupt(city) else 1.0
         prices: Dict[str, int] = {}
         for good_name, params in self._active_goods().items():
             base = params["base_price"]
@@ -1147,6 +1968,7 @@ class HanseGame:
                 * city_macro
                 * good_macro
                 * stock_factor
+                * bankruptcy_factor
             )
             prices[good_name] = max(6, price)
 
@@ -1159,6 +1981,32 @@ class HanseGame:
         missions.setdefault("fleet_synergy", {"state": "inactive"})
         missions.setdefault("atheria_resonance", {"state": "inactive"})
         missions.setdefault("family_dynasty", {"state": "inactive"})
+        missions.setdefault(
+            "brewmaster",
+            {"state": "active", "target": QUEST_BREWMASTER_TARGET, "delivered": 0, "next_log": 40},
+        )
+        missions.setdefault(
+            "timber_trade",
+            {"state": "active", "target": QUEST_TIMBER_TARGET, "delivered": 0, "next_log": 60},
+        )
+        route_mission = missions.setdefault(
+            "route_master",
+            {"state": "active", "target": QUEST_ROUTE_MASTER_TARGET_CITIES, "visited": [player.city]},
+        )
+        visited_raw = route_mission.get("visited", [])
+        visited = [str(city_name) for city_name in visited_raw if isinstance(city_name, str)]
+        if player.city not in visited:
+            visited.append(player.city)
+        route_mission["visited"] = visited
+        missions.setdefault(
+            "arms_race",
+            {
+                "state": "active",
+                "target_cannons": QUEST_ARMS_RACE_TARGET_CANNONS,
+                "target_ships": QUEST_ARMS_RACE_TARGET_SHIPS,
+            },
+        )
+        self._init_building_quests(player)
 
     def _month_index(self) -> int:
         return (self.current_year - STARTING_YEAR) * 12 + (self.current_month - 1)
@@ -1169,12 +2017,229 @@ class HanseGame:
             return float(mission.get("discount", HANSE_PRIVILEG_DISCOUNT))
         return 0.0
 
+    def _complete_mission_reward(
+        self,
+        player: Player,
+        mission_key: str,
+        *,
+        reward_money: int,
+        reward_rep: int,
+        text: str,
+    ) -> None:
+        mission = player.missions.get(mission_key, {})
+        if mission.get("state") == "completed":
+            return
+        mission["state"] = "completed"
+        if reward_money > 0:
+            player.money += reward_money
+        if reward_rep > 0:
+            player.reputation = min(200, player.reputation + reward_rep)
+        print(text)
+        player.chronicle.append(f"ANNO {self.current_year}: {text}")
+
+    def _building_recipe_ids_for_good(self, good_name: str) -> List[str]:
+        recipe_ids: List[str] = []
+        for recipe_id, recipe in PRODUCTION_RECIPES.items():
+            if good_name in recipe.outputs:
+                recipe_ids.append(recipe_id)
+        return sorted(
+            recipe_ids,
+            key=lambda rid: (RECIPE_UNLOCK_CENTURY.get(rid, 14), PRODUCTION_RECIPES[rid].name),
+        )
+
+    def _building_quest_base_target(self, recipe_id: str) -> int:
+        recipe = PRODUCTION_RECIPES.get(recipe_id)
+        if recipe is None or not recipe.outputs:
+            return 40
+        first_qty = max(1, int(next(iter(recipe.outputs.values()))))
+        return max(40, first_qty * BUILDING_QUEST_BASE_MULT)
+
+    def _building_quest_target(self, recipe_id: str, tier: int) -> int:
+        tier_i = max(1, int(tier) + 1)
+        return self._building_quest_base_target(recipe_id) * tier_i
+
+    def _init_building_quests(self, player: Player) -> None:
+        mission = player.missions.setdefault("building_quests", {})
+        current_century = self._current_century()
+        for recipe_id in PRODUCTION_RECIPES:
+            entry = mission.get(recipe_id)
+            if not isinstance(entry, dict):
+                entry = {"tier": 0, "progress": 0}
+            tier = max(0, int(entry.get("tier", 0)))
+            progress = max(0, int(entry.get("progress", 0)))
+            unlock_century = RECIPE_UNLOCK_CENTURY.get(recipe_id, 14)
+            if tier >= BUILDING_QUEST_TIERS:
+                state = "completed"
+                tier = BUILDING_QUEST_TIERS
+                progress = 0
+            elif current_century < unlock_century:
+                state = "locked"
+            else:
+                state = "active"
+            mission[recipe_id] = {
+                "tier": tier,
+                "progress": progress,
+                "state": state,
+            }
+
+    def _record_building_quest_trade(self, player: Player, good: str, qty: int) -> None:
+        if qty <= 0:
+            return
+        quests = player.missions.setdefault("building_quests", {})
+        current_century = self._current_century()
+        for recipe_id in self._building_recipe_ids_for_good(good):
+            if RECIPE_UNLOCK_CENTURY.get(recipe_id, 14) > current_century:
+                continue
+            recipe = PRODUCTION_RECIPES.get(recipe_id)
+            if recipe is None:
+                continue
+            entry = quests.get(recipe_id)
+            if not isinstance(entry, dict):
+                entry = {"tier": 0, "progress": 0, "state": "active"}
+            tier = max(0, int(entry.get("tier", 0)))
+            progress = max(0, int(entry.get("progress", 0)))
+            if tier >= BUILDING_QUEST_TIERS:
+                quests[recipe_id] = {"tier": BUILDING_QUEST_TIERS, "progress": 0, "state": "completed"}
+                continue
+
+            progress += qty
+            while tier < BUILDING_QUEST_TIERS:
+                target = self._building_quest_target(recipe_id, tier)
+                if progress < target:
+                    break
+                progress -= target
+                tier += 1
+                reward_money = 350 + tier * 180 + self._building_quest_base_target(recipe_id) // 2
+                reward_rep = 1 if tier % 2 == 0 else 0
+                player.money += reward_money
+                if reward_rep > 0:
+                    player.reputation = min(200, player.reputation + reward_rep)
+                print(
+                    f"Betriebsquest [{recipe.name}] Stufe {tier}/{BUILDING_QUEST_TIERS} abgeschlossen "
+                    f"(+{reward_money} Mark{', +1 Ruf' if reward_rep else ''})."
+                )
+                player.chronicle.append(
+                    f"ANNO {self.current_year}: Betriebsquest {recipe.name} Stufe {tier} abgeschlossen."
+                )
+
+            state = "completed" if tier >= BUILDING_QUEST_TIERS else "active"
+            quests[recipe_id] = {"tier": tier, "progress": progress, "state": state}
+
+    def _record_trade_for_missions(self, player: Player, good: str, qty: int) -> None:
+        if qty <= 0:
+            return
+
+        if good == "Bier":
+            mission = player.missions.setdefault(
+                "brewmaster",
+                {"state": "active", "target": QUEST_BREWMASTER_TARGET, "delivered": 0, "next_log": 40},
+            )
+            if mission.get("state") != "completed":
+                delivered = int(mission.get("delivered", 0)) + qty
+                target = int(mission.get("target", QUEST_BREWMASTER_TARGET))
+                mission["delivered"] = delivered
+                next_log = int(mission.get("next_log", 40))
+                if delivered >= next_log and delivered < target:
+                    print(f"Braumeisterbund: {min(delivered, target)}/{target} Bier.")
+                    mission["next_log"] = next_log + 40
+                if delivered >= target:
+                    self._complete_mission_reward(
+                        player,
+                        "brewmaster",
+                        reward_money=1800,
+                        reward_rep=3,
+                        text="Mission erfuellt: Braumeisterbund (+1800 Mark, +3 Ruf).",
+                    )
+
+        if good == "Holz":
+            mission = player.missions.setdefault(
+                "timber_trade",
+                {"state": "active", "target": QUEST_TIMBER_TARGET, "delivered": 0, "next_log": 60},
+            )
+            if mission.get("state") != "completed":
+                delivered = int(mission.get("delivered", 0)) + qty
+                target = int(mission.get("target", QUEST_TIMBER_TARGET))
+                mission["delivered"] = delivered
+                next_log = int(mission.get("next_log", 60))
+                if delivered >= next_log and delivered < target:
+                    print(f"Nordholz-Vertrag: {min(delivered, target)}/{target} Holz.")
+                    mission["next_log"] = next_log + 60
+                if delivered >= target:
+                    self._complete_mission_reward(
+                        player,
+                        "timber_trade",
+                        reward_money=1600,
+                        reward_rep=2,
+                        text="Mission erfuellt: Nordholz-Vertrag (+1600 Mark, +2 Ruf).",
+                    )
+
+        self._record_building_quest_trade(player, good, qty)
+
+    def _record_city_visit(self, player: Player, city: str) -> None:
+        mission = player.missions.setdefault(
+            "route_master",
+            {"state": "active", "target": QUEST_ROUTE_MASTER_TARGET_CITIES, "visited": [player.city]},
+        )
+        visited_raw = mission.get("visited", [])
+        visited = [str(city_name) for city_name in visited_raw if isinstance(city_name, str)]
+        if city not in visited:
+            visited.append(city)
+            mission["visited"] = visited
+        self._update_route_master(player)
+
+    def _update_route_master(self, player: Player) -> None:
+        mission = player.missions.setdefault(
+            "route_master",
+            {"state": "active", "target": QUEST_ROUTE_MASTER_TARGET_CITIES, "visited": [player.city]},
+        )
+        if mission.get("state") == "completed":
+            return
+        visited = [str(city_name) for city_name in mission.get("visited", []) if isinstance(city_name, str)]
+        if player.city not in visited:
+            visited.append(player.city)
+        mission["visited"] = visited
+        target = int(mission.get("target", QUEST_ROUTE_MASTER_TARGET_CITIES))
+        if len(visited) >= target:
+            self._complete_mission_reward(
+                player,
+                "route_master",
+                reward_money=1200,
+                reward_rep=2,
+                text="Mission erfuellt: Routenmeister (+1200 Mark, +2 Ruf).",
+            )
+
+    def _update_arms_race(self, player: Player) -> None:
+        mission = player.missions.setdefault(
+            "arms_race",
+            {
+                "state": "active",
+                "target_cannons": QUEST_ARMS_RACE_TARGET_CANNONS,
+                "target_ships": QUEST_ARMS_RACE_TARGET_SHIPS,
+            },
+        )
+        if mission.get("state") == "completed":
+            return
+        target_cannons = int(mission.get("target_cannons", QUEST_ARMS_RACE_TARGET_CANNONS))
+        target_ships = int(mission.get("target_ships", QUEST_ARMS_RACE_TARGET_SHIPS))
+        cannons = sum(ship.cannons for ship in player.ships)
+        ships_count = len(player.ships)
+        if ships_count >= target_ships and cannons >= target_cannons:
+            self._complete_mission_reward(
+                player,
+                "arms_race",
+                reward_money=2200,
+                reward_rep=4,
+                text="Mission erfuellt: Arsenal der Hanse (+2200 Mark, +4 Ruf).",
+            )
+
     def _update_missions_monthly(self, player: Player) -> None:
         self._init_missions(player)
         self._update_hanse_privileg(player, self._month_index())
         self._update_fleet_synergy(player)
         self._update_atheria_resonance(player)
         self._update_family_dynasty(player)
+        self._update_route_master(player)
+        self._update_arms_race(player)
 
     def _update_hanse_privileg(self, player: Player, month_index: int) -> None:
         mission = player.missions.setdefault("hanse_privileg", {})

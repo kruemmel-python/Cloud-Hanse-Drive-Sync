@@ -37,16 +37,25 @@ python HP_Game/main_pygame.py
 - Investitionen mit Risiko
 - Zufallsereignisse (Sturm, Kaperangriff, Schuldturm, Familie, Tod)
 - Missionen, Dynastie/Nachfolge und Auto-Modus (Atheria-Autopilot)
+- Erweiterte Questline mit 8 parallelen Missionen (inkl. Braumeisterbund, Nordholz-Vertrag, Routenmeister, Arsenal der Hanse)
+- Betriebskampagnen: pro Produktionsbetrieb 8 Queststufen (staffelweise Freischaltung/Belohnung)
 - Titel-/Waren-/Schiffserweiterung ueber Jahrhunderte (kein hartes Endjahr)
 
 ## Dynamische Weltwirtschaft
 
 - Jede Stadt fuehrt ein physisches Markt-Inventory pro Ware.
-- Produktionsbetriebe (z. B. Brauerei, Salzmine, Holzfaeller, Fischerei) verarbeiten monatlich Inputs/Outputs.
+- Jede Stadt startet mit mindestens 4 rezeptbasierten Betrieben (u. a. Brauerei, Salzmine, Holzfaeller, Fischerei, Weberei, Gerberei).
+- Zusaetzliche Jahrhundert-Betriebe von C15 bis C21 (Hopfenplantage bis Chipfabrik) werden automatisch freigeschaltet.
 - NPC-Haendler handeln per Arbitrage zwischen Staedten und bewegen echte Warenmengen.
 - Spielerhandel greift auf dieselben Stadtbestaende zu.
 - Preisbildung enthaelt einen zusaetzlichen Knappheits-/Ueberflussfaktor aus dem Stadtinventory.
+- Beteiligungsmarkt je Stadtbetrieb: Anteilskauf (in %) fuer passive Rendite.
+- Politischer Einfluss pro Stadt waechst durch Beteiligungen/Dividenden und ermoeglicht Rettungsfonds gegen Stadtbankrott.
+- Werftangebot ist jahrhundertbasiert modernisiert: veraltete Schiffsmodelle sind nicht mehr kaufbar.
+- Schiff-Editor erlaubt Kanonenkauf je Waffenstufe (alte und neue Kanonengenerationen).
 - Monatsreihenfolge: Seezustand -> ATHERIA-Refresh -> Produktion -> NPC-Trades -> Spielerphase.
+- Weltwirtschaft ist im CLI direkt einsehbar (Betriebsliste inkl. Inputs/Outputs, Aktivstatus, Laufbarkeit).
+- CSV-Export fuer Excel ist in CLI und pygame verfuegbar (pygame: `F6` / Button).
 
 ## ATHERIA-Wirtschaftssystem
 
