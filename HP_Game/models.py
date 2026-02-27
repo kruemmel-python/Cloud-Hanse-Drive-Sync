@@ -170,6 +170,32 @@ class CityEconomy:
     inventory: Dict[str, int] = field(default_factory=dict)
     buildings: List[Building] = field(default_factory=list)
     treasury: int = 0
+    population: int = 2400
+    social_classes: Dict[str, float] = field(
+        default_factory=lambda: {
+            "peasants": 0.72,
+            "artisans": 0.18,
+            "merchants": 0.08,
+            "nobility": 0.02,
+        }
+    )
+    institutions: Dict[str, int] = field(default_factory=dict)
+    infrastructure: float = 1.0
+    social_stability: float = 50.0
+    quality_of_life: float = 50.0
+    disease_pressure: float = 0.0
+    disease_cases: int = 0
+    child_survival_rate: float = 0.75
+    doctor_coverage: float = 0.0
+    migration: int = 0
+    tax_income: int = 0
+    political_influence: float = 0.0
+    local_scarcity_relief: float = 0.0
+    hazard_mitigation: float = 0.0
+    storage_multiplier: float = 1.0
+    bankrupt: int = 0
+    monuments: Dict[str, int] = field(default_factory=dict)
+    century_stage: int = 14
 
     def ensure_goods(self, goods: Iterable[str], default_stock: int = 150) -> None:
         base = max(0, int(default_stock))
@@ -187,14 +213,18 @@ class CityEconomy:
         stock = max(0, int(self.inventory.get(good_name, 0)))
         if stock <= 40:
             # Knappheit wird teuer, aber bleibt im kontrollierten Bereich.
-            return min(1.45, 1.10 + (40 - stock) / 120.0)
-        if stock < 120:
-            return 1.05 + (120 - stock) / 400.0
-        if stock <= 220:
-            return 1.0
-        if stock <= 260:
-            return 1.0 - (stock - 220) / 500.0
-        return max(0.78, 0.92 - (stock - 260) / 900.0)
+            base = min(1.45, 1.10 + (40 - stock) / 120.0)
+        elif stock < 120:
+            base = 1.05 + (120 - stock) / 400.0
+        elif stock <= 220:
+            base = 1.0
+        elif stock <= 260:
+            base = 1.0 - (stock - 220) / 500.0
+        else:
+            base = max(0.78, 0.92 - (stock - 260) / 900.0)
+        # Dauerhafte Sozialinvestitionen entlasten lokal den Knappheitsdruck.
+        relief = max(0.0, min(0.55, float(self.local_scarcity_relief)))
+        return max(0.62, min(1.60, base * (1.0 - relief)))
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CityEconomy":
@@ -222,11 +252,102 @@ class CityEconomy:
         except (TypeError, ValueError):
             treasury = 0
 
+        population_raw = data.get("population", 2400)
+        try:
+            population = max(200, int(population_raw))
+        except (TypeError, ValueError):
+            population = 2400
+
+        social_classes_raw = data.get("social_classes", {})
+        social_classes: Dict[str, float] = {}
+        if isinstance(social_classes_raw, dict):
+            for key, value in social_classes_raw.items():
+                try:
+                    social_classes[str(key)] = max(0.0, float(value))
+                except (TypeError, ValueError):
+                    continue
+        if not social_classes:
+            social_classes = {
+                "peasants": 0.72,
+                "artisans": 0.18,
+                "merchants": 0.08,
+                "nobility": 0.02,
+            }
+
+        institutions_raw = data.get("institutions", {})
+        institutions: Dict[str, int] = {}
+        if isinstance(institutions_raw, dict):
+            for key, value in institutions_raw.items():
+                try:
+                    institutions[str(key)] = max(0, int(value))
+                except (TypeError, ValueError):
+                    continue
+
+        def _float_field(key: str, default: float) -> float:
+            try:
+                return float(data.get(key, default))
+            except (TypeError, ValueError):
+                return float(default)
+
+        migration_raw = data.get("migration", 0)
+        try:
+            migration = int(migration_raw)
+        except (TypeError, ValueError):
+            migration = 0
+        disease_cases_raw = data.get("disease_cases", 0)
+        try:
+            disease_cases = max(0, int(disease_cases_raw))
+        except (TypeError, ValueError):
+            disease_cases = 0
+        tax_income_raw = data.get("tax_income", 0)
+        try:
+            tax_income = int(tax_income_raw)
+        except (TypeError, ValueError):
+            tax_income = 0
+        bankrupt_raw = data.get("bankrupt", 0)
+        try:
+            bankrupt = 1 if int(bankrupt_raw) else 0
+        except (TypeError, ValueError):
+            bankrupt = 0
+
+        monuments_raw = data.get("monuments", {})
+        monuments: Dict[str, int] = {}
+        if isinstance(monuments_raw, dict):
+            for key, value in monuments_raw.items():
+                try:
+                    monuments[str(key)] = max(0, int(value))
+                except (TypeError, ValueError):
+                    continue
+        century_raw = data.get("century_stage", 14)
+        try:
+            century_stage = max(1, int(century_raw))
+        except (TypeError, ValueError):
+            century_stage = 14
+
         return cls(
             name=str(data.get("name", "")).strip() or "Unbekannt",
             inventory=inventory,
             buildings=buildings,
             treasury=treasury,
+            population=population,
+            social_classes=social_classes,
+            institutions=institutions,
+            infrastructure=max(0.0, _float_field("infrastructure", 1.0)),
+            social_stability=max(0.0, min(100.0, _float_field("social_stability", 50.0))),
+            quality_of_life=max(0.0, min(100.0, _float_field("quality_of_life", 50.0))),
+            disease_pressure=max(0.0, min(1.2, _float_field("disease_pressure", 0.0))),
+            disease_cases=disease_cases,
+            child_survival_rate=max(0.15, min(0.999, _float_field("child_survival_rate", 0.75))),
+            doctor_coverage=max(0.0, min(1.5, _float_field("doctor_coverage", 0.0))),
+            migration=migration,
+            tax_income=tax_income,
+            political_influence=max(0.0, _float_field("political_influence", 0.0)),
+            local_scarcity_relief=max(0.0, min(0.55, _float_field("local_scarcity_relief", 0.0))),
+            hazard_mitigation=max(0.0, min(0.85, _float_field("hazard_mitigation", 0.0))),
+            storage_multiplier=max(1.0, _float_field("storage_multiplier", 1.0)),
+            bankrupt=bankrupt,
+            monuments=monuments,
+            century_stage=century_stage,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -235,6 +356,25 @@ class CityEconomy:
             "inventory": {good: max(0, int(qty)) for good, qty in self.inventory.items()},
             "buildings": [building.to_dict() for building in self.buildings],
             "treasury": int(self.treasury),
+            "population": max(200, int(self.population)),
+            "social_classes": {str(key): float(value) for key, value in self.social_classes.items()},
+            "institutions": {str(key): max(0, int(value)) for key, value in self.institutions.items()},
+            "infrastructure": float(self.infrastructure),
+            "social_stability": float(self.social_stability),
+            "quality_of_life": float(self.quality_of_life),
+            "disease_pressure": float(self.disease_pressure),
+            "disease_cases": max(0, int(self.disease_cases)),
+            "child_survival_rate": float(self.child_survival_rate),
+            "doctor_coverage": float(self.doctor_coverage),
+            "migration": int(self.migration),
+            "tax_income": int(self.tax_income),
+            "political_influence": float(self.political_influence),
+            "local_scarcity_relief": float(self.local_scarcity_relief),
+            "hazard_mitigation": float(self.hazard_mitigation),
+            "storage_multiplier": float(self.storage_multiplier),
+            "bankrupt": int(self.bankrupt),
+            "monuments": {str(key): max(0, int(value)) for key, value in self.monuments.items()},
+            "century_stage": int(self.century_stage),
         }
 
 
@@ -341,10 +481,18 @@ class Player:
     marriage_month: Optional[int] = None
     children: int = 0
     child_names: List[str] = field(default_factory=list)
+    child_ages: Dict[str, int] = field(default_factory=dict)
     last_marriage_offer_month: int = -9999
     turns_in_debt_tower: int = 0
     chronicle: List[str] = field(default_factory=list)
-    investments: List[Investment] = field(default_factory=list)
+    market_investments: List[Investment] = field(default_factory=list)
+    investments: Dict[str, float] = field(
+        default_factory=lambda: {
+            "social": 0.0,
+            "research": 0.0,
+            "infrastructure": 0.0,
+        }
+    )
     building_shares: Dict[str, Dict[str, float]] = field(default_factory=dict)
     city_influence: Dict[str, float] = field(default_factory=dict)
 
@@ -362,6 +510,17 @@ class Player:
         elif self.children > len(self.child_names):
             for idx in range(len(self.child_names) + 1, self.children + 1):
                 self.child_names.append(f"Kind {idx}")
+        if not isinstance(self.child_ages, dict):
+            self.child_ages = {}
+        normalized_child_ages: Dict[str, int] = {}
+        for child_name in self.child_names:
+            raw_age = self.child_ages.get(child_name, 6)
+            try:
+                age = max(0, int(raw_age))
+            except (TypeError, ValueError):
+                age = 6
+            normalized_child_ages[child_name] = age
+        self.child_ages = normalized_child_ages
         if not isinstance(self.building_shares, dict):
             self.building_shares = {}
         cleaned_shares: Dict[str, Dict[str, float]] = {}
@@ -391,6 +550,28 @@ class Player:
             if score > 0:
                 cleaned_influence[str(city_name)] = score
         self.city_influence = cleaned_influence
+        if not isinstance(self.market_investments, list):
+            self.market_investments = []
+        normalized_market: List[Investment] = []
+        for entry in self.market_investments:
+            if isinstance(entry, Investment):
+                normalized_market.append(entry)
+            elif isinstance(entry, dict):
+                normalized_market.append(Investment.from_dict(entry))
+        self.market_investments = normalized_market
+        if not isinstance(self.investments, dict):
+            self.investments = {}
+        normalized_investments = {
+            "social": 0.0,
+            "research": 0.0,
+            "infrastructure": 0.0,
+        }
+        for key in list(normalized_investments.keys()):
+            try:
+                normalized_investments[key] = max(0.0, float(self.investments.get(key, 0.0)))
+            except (TypeError, ValueError):
+                normalized_investments[key] = 0.0
+        self.investments = normalized_investments
 
     @property
     def total_cargo(self) -> int:
@@ -445,10 +626,12 @@ class Player:
             "marriage_month": self.marriage_month,
             "children": self.children,
             "child_names": list(self.child_names),
+            "child_ages": {name: max(0, int(age)) for name, age in self.child_ages.items()},
             "last_marriage_offer_month": self.last_marriage_offer_month,
             "turns_in_debt_tower": self.turns_in_debt_tower,
             "chronicle": list(self.chronicle),
-            "investments": [inv.to_dict() for inv in self.investments],
+            "market_investments": [inv.to_dict() for inv in self.market_investments],
+            "investments": {key: float(value) for key, value in self.investments.items()},
             "building_shares": {
                 city: {recipe_id: float(pct) for recipe_id, pct in shares.items()}
                 for city, shares in self.building_shares.items()
@@ -513,7 +696,26 @@ class Player:
                     city_locks[str(raw_good)] = entries
                 warehouse_locks[str(raw_city)] = city_locks
 
-        investments = [Investment.from_dict(entry) for entry in data.get("investments", [])]
+        market_investments_raw = data.get("market_investments")
+        legacy_investments_raw = data.get("investments")
+        if isinstance(market_investments_raw, list):
+            market_investments = [Investment.from_dict(entry) for entry in market_investments_raw]
+        elif isinstance(legacy_investments_raw, list):
+            market_investments = [Investment.from_dict(entry) for entry in legacy_investments_raw]
+        else:
+            market_investments = []
+        investments_raw = data.get("investments", {})
+        investments_dict = {
+            "social": 0.0,
+            "research": 0.0,
+            "infrastructure": 0.0,
+        }
+        if isinstance(investments_raw, dict):
+            for key in list(investments_dict.keys()):
+                try:
+                    investments_dict[key] = max(0.0, float(investments_raw.get(key, 0.0)))
+                except (TypeError, ValueError):
+                    investments_dict[key] = 0.0
         missions_raw = data.get("missions", {})
         missions: Dict[str, Dict[str, Any]] = {}
         if isinstance(missions_raw, dict):
@@ -551,6 +753,15 @@ class Player:
         child_names: List[str] = []
         if isinstance(child_names_raw, list):
             child_names = [str(item).strip() for item in child_names_raw if str(item).strip()]
+        child_ages_raw = data.get("child_ages", {})
+        child_ages: Dict[str, int] = {}
+        if isinstance(child_ages_raw, dict):
+            for raw_name, raw_age in child_ages_raw.items():
+                try:
+                    age = max(0, int(raw_age))
+                except (TypeError, ValueError):
+                    continue
+                child_ages[str(raw_name)] = age
         spouse_name = str(data.get("spouse_name", ""))
         marriage_year_raw = data.get("marriage_year")
         marriage_month_raw = data.get("marriage_month")
@@ -583,10 +794,12 @@ class Player:
             marriage_month=marriage_month,
             children=int(data.get("children", 0)),
             child_names=child_names,
+            child_ages=child_ages,
             last_marriage_offer_month=int(data.get("last_marriage_offer_month", -9999)),
             turns_in_debt_tower=int(data.get("turns_in_debt_tower", 0)),
             chronicle=[str(item) for item in data.get("chronicle", [])],
-            investments=investments,
+            market_investments=market_investments,
+            investments=investments_dict,
             building_shares=building_shares,
             city_influence=city_influence,
         )

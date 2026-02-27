@@ -56,6 +56,11 @@ python HP_Game/main_pygame.py
 - Monatsreihenfolge: Seezustand -> ATHERIA-Refresh -> Produktion -> NPC-Trades -> Spielerphase.
 - Weltwirtschaft ist im CLI direkt einsehbar (Betriebsliste inkl. Inputs/Outputs, Aktivstatus, Laufbarkeit).
 - CSV-Export fuer Excel ist in CLI und pygame verfuegbar (pygame: `F6` / Button).
+- Steuer- und Migrationsanzeigen sind im UI kompakt formatiert (`K/M/B/T`) und Save-Werte werden beim Laden sicher begrenzt.
+- Auto-Modus priorisiert wieder aktiven Handel (Beladen/Versand) und modernisiert Schiffe nur mit ausreichender Liquiditaetsreserve.
+- Auto-Modus bleibt risikobehaftet: Ohne Nachfolge (Tod des Vorfahren) oder bei vollstaendigem Flottenverlust kann das Handelshaus enden.
+- Schnellhilfe fuer Nachfolge: Button `Nachkommen zeugen` im Hauptbildschirm (bei verheirateter Figur).
+- Verstaendliche Investitionsnamen im UI: `Reise-Infrastruktur` (kuerzere Reisen) und `Marktstabilisierung` (daempft Preisspruenge).
 
 ## ATHERIA-Wirtschaftssystem
 

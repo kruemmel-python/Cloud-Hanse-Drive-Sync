@@ -13,8 +13,12 @@ from typing import Any, Dict, List, Tuple
 from atheria_economy import AtheriaEconomyEngine, EconomyState
 from game_data import (
     CITIES,
+    birth_chance_for_year,
+    child_mortality_for_year,
     city_good_bias,
+    disease_pressure_for_year,
     goods_for_year,
+    max_children_for_year,
     MAX_PLAYERS,
     MIN_NAME_LEN,
     MONTHS,
@@ -49,6 +53,10 @@ from game_data import (
 from models import Building, CityEconomy, Investment, NPCTrader, Player, ProductionRecipe, Ship, WorldEconomy
 
 
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
 WORLD_INITIAL_STOCK_MIN = 120
 WORLD_INITIAL_STOCK_MAX = 180
 NPC_MIN_MARKET_STOCK = 20
@@ -77,6 +85,7 @@ BAILOUT_MIN_AMOUNT = 500
 BAILOUT_INFLUENCE_COST = 4.0
 INFLUENCE_PER_SHARE_PURCHASE = 0.30
 INFLUENCE_PER_DIVIDEND_1000 = 0.35
+CHILD_MORTALITY_VULNERABLE_AGE = 6
 
 RECIPE_UNLOCK_CENTURY: Dict[str, int] = {
     "brewery": 14,
@@ -332,7 +341,13 @@ class HanseGame:
         )
         self.world_economy = WorldEconomy()
         self.npcs: List[NPCTrader] = []
-        self.last_world_tick: Dict[str, int] = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
+        self.last_world_tick: Dict[str, int] = {
+            "producing_buildings": 0,
+            "npc_trades": 0,
+            "cities_bankrupt": 0,
+            "disease_cases": 0,
+            "disease_deaths": 0,
+        }
         self.last_dividend_pools: Dict[str, Dict[str, int]] = {}
         self._ensure_world_state(reset_world=True, reset_npcs=True)
 
@@ -483,6 +498,31 @@ class HanseGame:
                 city.treasury = int(city.treasury)
             except (TypeError, ValueError):
                 city.treasury = 0
+            try:
+                city.population = max(180, int(city.population))
+            except (TypeError, ValueError):
+                city.population = 2400
+            if not isinstance(city.institutions, dict):
+                city.institutions = {}
+            city.institutions.setdefault("hospital", 0)
+            city.institutions.setdefault("doctors", 0)
+            city.institutions.setdefault("sanitation", 0)
+            try:
+                city.disease_pressure = _clamp(float(city.disease_pressure), 0.0, 1.2)
+            except (TypeError, ValueError):
+                city.disease_pressure = 0.0
+            try:
+                city.disease_cases = max(0, int(city.disease_cases))
+            except (TypeError, ValueError):
+                city.disease_cases = 0
+            try:
+                city.child_survival_rate = _clamp(float(city.child_survival_rate), 0.15, 0.999)
+            except (TypeError, ValueError):
+                city.child_survival_rate = 0.75
+            try:
+                city.doctor_coverage = _clamp(float(city.doctor_coverage), 0.0, 1.5)
+            except (TypeError, ValueError):
+                city.doctor_coverage = 0.0
 
         if reset_npcs or not isinstance(self.npcs, list):
             self.npcs = self._default_npcs()
@@ -528,6 +568,108 @@ class HanseGame:
         city = self._city_economy(city_name)
         city.inventory[good_name] = city.inventory.get(good_name, 0) + int(qty)
         return int(qty)
+
+    def _institution_level(self, city: CityEconomy, key: str) -> int:
+        try:
+            return max(0, int(city.institutions.get(key, 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    def _city_health_profile(self, city_name: str) -> Dict[str, float]:
+        city = self._city_economy(city_name)
+        century = self._current_century()
+        if century >= 15:
+            city.institutions["hospital"] = max(
+                self._institution_level(city, "hospital"),
+                1 + max(0, century - 15) // 4,
+            )
+        if century >= 16:
+            city.institutions["doctors"] = max(
+                self._institution_level(city, "doctors"),
+                1 + max(0, century - 16) // 4,
+            )
+        if century >= 19:
+            city.institutions["sanitation"] = max(
+                self._institution_level(city, "sanitation"),
+                1 + max(0, century - 19) // 3,
+            )
+        hospital_lvl = self._institution_level(city, "hospital")
+        doctors_lvl = self._institution_level(city, "doctors")
+        sanitation_lvl = self._institution_level(city, "sanitation")
+        food_stock = (
+            city.inventory.get("Getreide", 0)
+            + city.inventory.get("Hering", 0)
+            + city.inventory.get("Salz", 0)
+        )
+        food_need = max(140, int(city.population * 0.14))
+        food_ratio = food_stock / max(1, food_need)
+        base_disease = disease_pressure_for_year(self.current_year)
+        supply_stress = max(0.0, min(1.6, 1.0 - food_ratio))
+        medical_quality = _clamp(
+            0.20
+            + (hospital_lvl * 0.10)
+            + (doctors_lvl * 0.14)
+            + (sanitation_lvl * 0.07)
+            + (float(city.hazard_mitigation) * 0.35),
+            0.08,
+            1.30,
+        )
+        disease_pressure = _clamp(
+            base_disease
+            + (supply_stress * 0.22)
+            + (0.10 if self._city_is_bankrupt(city_name) else 0.0)
+            - (medical_quality * 0.20),
+            0.01,
+            0.95,
+        )
+        outbreak_factor = self.rng.uniform(0.20, 1.20)
+        disease_cases = int(
+            round(
+                city.population
+                * disease_pressure
+                * (0.003 + base_disease * 0.022)
+                * outbreak_factor
+            )
+        )
+        disease_cases = max(0, min(int(city.population * 0.30), disease_cases))
+        child_survival = _clamp(
+            1.0
+            - child_mortality_for_year(self.current_year) * (1.25 - medical_quality)
+            - disease_pressure * 0.08,
+            0.25,
+            0.995,
+        )
+        city.disease_pressure = disease_pressure
+        city.disease_cases = disease_cases
+        city.child_survival_rate = child_survival
+        city.doctor_coverage = _clamp(
+            (hospital_lvl * 0.16 + doctors_lvl * 0.24 + sanitation_lvl * 0.10)
+            / max(1.0, city.population / 12_000.0),
+            0.0,
+            1.5,
+        )
+        return {
+            "disease_pressure": float(disease_pressure),
+            "disease_cases": int(disease_cases),
+            "child_survival_rate": float(child_survival),
+            "medical_quality": float(medical_quality),
+        }
+
+    def _tick_city_health(self) -> Dict[str, int]:
+        total_cases = 0
+        total_deaths = 0
+        for city_name in CITIES:
+            profile = self._city_health_profile(city_name)
+            cases = int(profile.get("disease_cases", 0))
+            pressure = float(profile.get("disease_pressure", 0.0))
+            city = self._city_economy(city_name)
+            death_rate = _clamp(0.010 + pressure * 0.040 - city.doctor_coverage * 0.008, 0.002, 0.070)
+            deaths = int(round(cases * death_rate))
+            if deaths > 0:
+                city.population = max(180, int(city.population) - deaths)
+            total_cases += cases
+            total_deaths += max(0, deaths)
+        return {"disease_cases": total_cases, "disease_deaths": total_deaths}
 
     def _city_take_inventory(self, city_name: str, good_name: str, qty: int, min_remaining: int = 0) -> int:
         if qty <= 0:
@@ -761,6 +903,7 @@ class HanseGame:
 
     def _run_world_month_tick(self) -> Dict[str, int]:
         production_count = self._tick_world_production()
+        health_metrics = self._tick_city_health()
         npc_trade_count = self._tick_world_npcs()
         bankrupt_count = sum(1 for city_name in CITIES if self._city_is_bankrupt(city_name))
         # NPCs handeln vor dem Spieler. Danach bleiben Preise fuer den Monat gecached stabil.
@@ -769,6 +912,8 @@ class HanseGame:
             "producing_buildings": production_count,
             "npc_trades": npc_trade_count,
             "cities_bankrupt": bankrupt_count,
+            "disease_cases": int(health_metrics.get("disease_cases", 0)),
+            "disease_deaths": int(health_metrics.get("disease_deaths", 0)),
         }
         return dict(self.last_world_tick)
 
@@ -792,7 +937,10 @@ class HanseGame:
         print()
         print("=" * 70)
         print(f"WELTWIRTSCHAFT: {city_name}")
-        print(f"Stadtkasse: {city.treasury} | Status: {city_status} | Betriebe: {len(city.buildings)}")
+        print(
+            f"Stadtkasse: {city.treasury} | Status: {city_status} | Betriebe: {len(city.buildings)} | "
+            f"Krankheitsdruck: {city.disease_pressure:.2f} | Faelle: {city.disease_cases}"
+        )
         if player is not None:
             influence = self._player_city_influence(player, city_name)
             share_sum = sum(self._player_building_share_percent(player, city_name, b.id) for b in city.buildings)
@@ -1014,9 +1162,14 @@ class HanseGame:
 
                 for city_name in CITIES:
                     city = self._city_economy(city_name)
+                    self._city_health_profile(city_name)
                     row("city", city_name, "", "treasury", city.treasury, "Mark")
                     row("city", city_name, "", "bankrupt", int(self._city_is_bankrupt(city_name)))
                     row("city", city_name, "", "building_count", len(city.buildings), "count")
+                    row("city", city_name, "", "disease_pressure", f"{city.disease_pressure:.4f}")
+                    row("city", city_name, "", "disease_cases", city.disease_cases, "citizens")
+                    row("city", city_name, "", "child_survival_rate", f"{city.child_survival_rate:.4f}")
+                    row("city", city_name, "", "doctor_coverage", f"{city.doctor_coverage:.4f}")
                     prices = self._market_prices(city_name)
                     for good_name in self._active_good_names():
                         stock = city.inventory.get(good_name, 0)
@@ -1059,6 +1212,8 @@ class HanseGame:
                     row("player", p.name, "", "debt", p.debt, "Mark")
                     row("player", p.name, "", "reputation", p.reputation)
                     row("player", p.name, "", "age", p.age, "years")
+                    row("player", p.name, "", "children", p.children, "count")
+                    row("player", p.name, "", "children_limit", max_children_for_year(self.current_year), "count")
                     row("player", p.name, "", "net_worth", self._net_worth(p, city_prices), "Mark")
                     for city_name, score in p.city_influence.items():
                         row("player_influence", p.name, city_name, "score", f"{float(score):.2f}")
@@ -1153,7 +1308,8 @@ class HanseGame:
             print(
                 f"Weltmarkt: Produktion aktiv {world_tick.get('producing_buildings', 0)} Betriebe | "
                 f"NPC-Deals {world_tick.get('npc_trades', 0)} von {len(self.npcs)} | "
-                f"Bankrott-Staedte {world_tick.get('cities_bankrupt', 0)}"
+                f"Bankrott-Staedte {world_tick.get('cities_bankrupt', 0)} | "
+                f"Krankheitsfaelle {world_tick.get('disease_cases', 0)}"
             )
             print("=" * 60)
             for player in self.players:
@@ -1303,6 +1459,7 @@ class HanseGame:
             for player in self.players:
                 self._sync_player_goods(player)
                 self._init_missions(player)
+                self._ensure_player_child_ages(player)
             econ_engine_data = raw.get("atheria_economy_engine")
             if isinstance(econ_engine_data, dict):
                 self.economy_engine.load_dict(econ_engine_data)
@@ -1442,9 +1599,9 @@ class HanseGame:
         for good_name in self._active_good_names():
             qty = player.cargo.get(good_name, 0)
             print(f"  {good_name:14} {qty:>4}  Preis {prices.get(good_name, 0):>4}")
-        if player.investments:
+        if player.market_investments:
             print("Laufende Investitionen:")
-            for inv in player.investments:
+            for inv in player.market_investments:
                 print(f"  {inv.amount} Mark | Rest {inv.turns_left} Runde(n) | Risiko {inv.risk}")
         print("-" * 60)
 
@@ -1547,6 +1704,21 @@ class HanseGame:
             "stille See": 0.08,
         }
         risk = risk_map[self.current_sea_state]
+        origin_city = self._city_economy(origin)
+        target_city = self._city_economy(target)
+        mitigation = _clamp(
+            (float(origin_city.hazard_mitigation) + float(target_city.hazard_mitigation)) / 2.0
+            + (
+                self._institution_level(origin_city, "hospital")
+                + self._institution_level(target_city, "hospital")
+                + self._institution_level(origin_city, "doctors")
+                + self._institution_level(target_city, "doctors")
+            )
+            * 0.015,
+            0.0,
+            0.80,
+        )
+        risk = max(0.02, risk * (1.0 - mitigation * 0.70))
         if self.rng.random() < risk:
             hull_damage = self.rng.randint(5, 18)
             rig_damage = self.rng.randint(4, 14)
@@ -1682,7 +1854,7 @@ class HanseGame:
         risk = self._ask_int("Risiko 1 (niedrig) bis 3 (hoch): ", 1, 3)
         turns = {1: 2, 2: 2, 3: 1}[risk]
         player.money -= amount
-        player.investments.append(Investment(amount=amount, turns_left=turns, risk=risk))
+        player.market_investments.append(Investment(amount=amount, turns_left=turns, risk=risk))
         print(f"{amount} Mark investiert. Auszahlung in {turns} Runde(n).")
 
     def _missions_menu(self, player: Player) -> None:
@@ -1816,7 +1988,7 @@ class HanseGame:
 
     def _resolve_investments(self, player: Player) -> None:
         remaining: List[Investment] = []
-        for inv in player.investments:
+        for inv in player.market_investments:
             inv.turns_left -= 1
             if inv.turns_left > 0:
                 remaining.append(inv)
@@ -1844,7 +2016,7 @@ class HanseGame:
                 player.chronicle.append(
                     f"ANNO {self.current_year}: Investition brachte {-diff} Mark Verlust."
                 )
-        player.investments = remaining
+        player.market_investments = remaining
 
     def _end_of_turn(self, player: Player) -> None:
         if not player.alive:
@@ -1907,17 +2079,77 @@ class HanseGame:
         self._update_title(player)
         self._update_missions_monthly(player)
 
+    def _ensure_player_child_ages(self, player: Player) -> None:
+        if not isinstance(player.child_names, list):
+            player.child_names = []
+        if not isinstance(player.child_ages, dict):
+            player.child_ages = {}
+        if player.children < len(player.child_names):
+            player.children = len(player.child_names)
+        elif player.children > len(player.child_names):
+            for idx in range(len(player.child_names) + 1, player.children + 1):
+                player.child_names.append(f"Kind {idx}")
+        for child_name in player.child_names:
+            try:
+                player.child_ages[child_name] = max(0, int(player.child_ages.get(child_name, 6)))
+            except (TypeError, ValueError):
+                player.child_ages[child_name] = 6
+        for raw_name in list(player.child_ages.keys()):
+            if raw_name not in player.child_names:
+                player.child_ages.pop(raw_name, None)
+
     def _resolve_life_events(self, player: Player) -> None:
+        self._ensure_player_child_ages(player)
+        city_name = player.city if player.city in CITIES else CITIES[0]
+        health = self._city_health_profile(city_name)
+        survival_probability = _clamp(float(health.get("child_survival_rate", 0.75)), 0.20, 0.995)
+        yearly_child_mortality = _clamp(1.0 - survival_probability, 0.002, 0.30)
+
+        deceased_children: List[str] = []
+        for child_name in list(player.child_names):
+            age = max(0, int(player.child_ages.get(child_name, 0))) + 1
+            player.child_ages[child_name] = age
+            if age <= CHILD_MORTALITY_VULNERABLE_AGE and self.rng.random() < yearly_child_mortality:
+                deceased_children.append(child_name)
+        if deceased_children:
+            for child_name in deceased_children:
+                if child_name in player.child_names:
+                    player.child_names.remove(child_name)
+                player.child_ages.pop(child_name, None)
+                player.chronicle.append(
+                    f"ANNO {self.current_year}: Kind {child_name} verstarb an Krankheit."
+                )
+            player.children = len(player.child_names)
+            if len(deceased_children) == 1:
+                print(f"Historie: Kind {deceased_children[0]} verstarb an Krankheit.")
+            else:
+                print(f"Historie: {len(deceased_children)} Kinder verstarben an Krankheiten.")
+
         if not player.married and player.age >= 23 and self._net_worth(player, self._market_prices(player.city)) > 12000:
             if self.rng.random() < 0.16:
                 player.married = True
                 player.chronicle.append(f"ANNO {self.current_year}: {player.name} ist den Bund der Ehe eingegangen.")
                 print("Historie: in den Bund der Ehe eingegangen.")
 
-        if player.married and self.rng.random() < 0.24:
-            player.children += 1
-            player.chronicle.append(f"ANNO {self.current_year}: Kind geboren.")
-            print("Historie: geboren.")
+        max_children = max_children_for_year(self.current_year)
+        if player.married and player.children < max_children:
+            age_penalty = _clamp(1.0 - max(0, player.age - 35) * 0.02, 0.45, 1.0)
+            support_factor = _clamp(0.72 + float(health.get("child_survival_rate", 0.75)) * 0.42, 0.55, 1.16)
+            birth_chance = _clamp(birth_chance_for_year(self.current_year) * age_penalty * support_factor, 0.02, 0.56)
+            if self.rng.random() < birth_chance:
+                child_name = f"Kind {len(player.child_names) + 1}"
+                if self.rng.random() <= survival_probability:
+                    player.child_names.append(child_name)
+                    player.child_ages[child_name] = 0
+                    player.children = len(player.child_names)
+                    player.chronicle.append(f"ANNO {self.current_year}: Kind geboren ({child_name}).")
+                    print("Historie: geboren.")
+                else:
+                    player.chronicle.append(
+                        f"ANNO {self.current_year}: Neugeborenes {child_name} verstarb an Krankheit."
+                    )
+                    print("Historie: Neugeborenes verstarb an Krankheit.")
+        player.children = len(player.child_names)
 
         if player.age > 60:
             death_chance = min(0.42, (player.age - 60) * 0.025)
@@ -2369,6 +2601,8 @@ class HanseGame:
         player.age = 18
         player.married = False
         player.children = 0
+        player.child_names = []
+        player.child_ages = {}
         player.turns_in_debt_tower = 0
         if player.money < inheritance:
             player.money = inheritance

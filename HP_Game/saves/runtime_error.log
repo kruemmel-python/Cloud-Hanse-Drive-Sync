@@ -14,3 +14,303 @@ Traceback (most recent call last):
   File "<stdin>", line 15, in boom
 AttributeError: simulierter_testfehler
 
+[2026-02-27 08:00:27] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=advance_auto | Year=1894 Month=1 Scene=game
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 3043, in _safe_advance_month
+    self._advance_year()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 7040, in _advance_year
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:00:50] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=advance_auto | Year=1895 Month=3 Scene=game
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 3043, in _safe_advance_month
+    self._advance_year()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 7040, in _advance_year
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:01:01] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:01:04] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2507, in run
+    self._handle_key(event)
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2557, in _handle_key
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:01:05] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:01:12] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:01:12] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:01:20] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:01:22] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2507, in run
+    self._handle_key(event)
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2557, in _handle_key
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:02:52] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2507, in run
+    self._handle_key(event)
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2557, in _handle_key
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:02:53] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:02:53] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:02:54] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:03:00] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:03:00] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2509, in run
+    self._handle_click(self._to_virtual_pos(event.pos))
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2694, in _handle_click
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:03:01] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2507, in run
+    self._handle_key(event)
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2557, in _handle_key
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:03:01] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=run_loop | Year=1368 Month=1 Scene=setup
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2507, in run
+    self._handle_key(event)
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 2557, in _handle_key
+    self._start_new_game()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 6471, in _start_new_game
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+
+[2026-02-27 08:03:19] TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+Context=advance_auto | Year=1420 Month=4 Scene=game
+Traceback (most recent call last):
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 3043, in _safe_advance_month
+    self._advance_year()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 7040, in _advance_year
+    self._run_world_month_tick()
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1641, in _run_world_month_tick
+    social_metrics = self._simulate_city_society()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\HANSE_ATHERIA\GitHub_Repo\HP_Game\pygame_game.py", line 1026, in _simulate_city_society
+    storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PygameHanseApp._city_storage_capacity() missing 1 required positional argument: 'good_name'
+

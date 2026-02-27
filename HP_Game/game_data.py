@@ -212,6 +212,20 @@ WEAPON_TIERS_BY_CENTURY: Dict[int, Dict[str, float | int | str]] = {
     21: {"name": "Railkanonen", "cannon_cost": 2200, "cannon_power": 2.45, "max_bonus": 18},
 }
 
+FAMILY_CENTURY_PROFILES: Dict[int, Dict[str, float]] = {
+    # Historisch grob: frueh hohe Geburtenzahl, hohe Krankheits-/Kindersterblichkeit;
+    # spaeter weniger Geburten bei deutlich hoeherer Ueberlebenschance.
+    14: {"max_children": 7.0, "birth_chance": 0.34, "child_mortality": 0.22, "disease_pressure": 0.30},
+    15: {"max_children": 7.0, "birth_chance": 0.33, "child_mortality": 0.20, "disease_pressure": 0.28},
+    16: {"max_children": 6.0, "birth_chance": 0.30, "child_mortality": 0.17, "disease_pressure": 0.24},
+    17: {"max_children": 5.0, "birth_chance": 0.27, "child_mortality": 0.14, "disease_pressure": 0.20},
+    18: {"max_children": 4.0, "birth_chance": 0.24, "child_mortality": 0.10, "disease_pressure": 0.14},
+    # Industrielle/Moderne Welt: maximal drei Kinder, hohe Ueberlebenswahrscheinlichkeit.
+    19: {"max_children": 3.0, "birth_chance": 0.20, "child_mortality": 0.07, "disease_pressure": 0.10},
+    20: {"max_children": 3.0, "birth_chance": 0.16, "child_mortality": 0.04, "disease_pressure": 0.06},
+    21: {"max_children": 3.0, "birth_chance": 0.13, "child_mortality": 0.025, "disease_pressure": 0.04},
+}
+
 
 def year_to_century(year: int) -> int:
     year_i = max(1, int(year))
@@ -391,6 +405,43 @@ def weapon_profile_for_century(century: int) -> Dict[str, float | int | str]:
 
 def weapon_profile_for_year(year: int) -> Dict[str, float | int | str]:
     return weapon_profile_for_century(year_to_century(year))
+
+
+def family_profile_for_century(century: int) -> Dict[str, float]:
+    century_i = max(14, int(century))
+    key = 14
+    for candidate in sorted(FAMILY_CENTURY_PROFILES):
+        if candidate <= century_i:
+            key = candidate
+        else:
+            break
+    profile = FAMILY_CENTURY_PROFILES[key]
+    return {
+        "max_children": float(profile["max_children"]),
+        "birth_chance": float(profile["birth_chance"]),
+        "child_mortality": float(profile["child_mortality"]),
+        "disease_pressure": float(profile["disease_pressure"]),
+    }
+
+
+def family_profile_for_year(year: int) -> Dict[str, float]:
+    return family_profile_for_century(year_to_century(year))
+
+
+def max_children_for_year(year: int) -> int:
+    return max(1, int(round(family_profile_for_year(year)["max_children"])))
+
+
+def birth_chance_for_year(year: int) -> float:
+    return float(family_profile_for_year(year)["birth_chance"])
+
+
+def child_mortality_for_year(year: int) -> float:
+    return float(family_profile_for_year(year)["child_mortality"])
+
+
+def disease_pressure_for_year(year: int) -> float:
+    return float(family_profile_for_year(year)["disease_pressure"])
 
 
 def max_cannons_for_ship(ship_name: str, cargo_capacity: int, year: int) -> int:
