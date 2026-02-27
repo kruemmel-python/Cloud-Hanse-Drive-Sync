@@ -1,0 +1,579 @@
+{
+  "year": 1368,
+  "month": 1,
+  "sea_state": "tobende See",
+  "saved_at": "2026-02-25 06:23:01",
+  "players": [
+    {
+      "name": "AutoTest",
+      "gender": "m",
+      "city": "Bergen",
+      "money": 489410,
+      "debt": 1800,
+      "reputation": 12,
+      "age": 21,
+      "title_index": 0,
+      "ships": [
+        {
+          "name": "Kogge",
+          "custom_name": "",
+          "cargo_capacity": 120,
+          "hull": 90,
+          "rigging": 90,
+          "value": 3200,
+          "cargo": {
+            "Salz": 0,
+            "Holz": 0,
+            "Pelze": 0,
+            "Getreide": 0,
+            "Tuch": 0,
+            "Hering": 0,
+            "Wein": 0
+          },
+          "cannons": 0,
+          "is_at_sea": false,
+          "city": "Bergen",
+          "destination": null,
+          "travel_turns_left": 0,
+          "last_report": "",
+          "locked_prices": {},
+          "locked_qty": {}
+        },
+        {
+          "name": "Grosse Kogge",
+          "custom_name": "TEST",
+          "cargo_capacity": 180,
+          "hull": 100,
+          "rigging": 100,
+          "value": 5200,
+          "cargo": {
+            "Salz": 0,
+            "Holz": 0,
+            "Pelze": 0,
+            "Getreide": 0,
+            "Tuch": 0,
+            "Hering": 0,
+            "Wein": 0
+          },
+          "cannons": 6,
+          "is_at_sea": true,
+          "city": "Bergen",
+          "destination": "Luebeck",
+          "travel_turns_left": 2,
+          "last_report": "Ausgelaufen nach Luebeck, ETA 2 Monat(e).",
+          "locked_prices": {},
+          "locked_qty": {}
+        }
+      ],
+      "active_ship_index": 0,
+      "warehouses": {
+        "Bergen": {
+          "Salz": 0,
+          "Holz": 0,
+          "Pelze": 0,
+          "Getreide": 0,
+          "Tuch": 0,
+          "Hering": 0,
+          "Wein": 0
+        }
+      },
+      "warehouse_locks": {
+        "Bergen": {
+          "Salz": [],
+          "Holz": [],
+          "Pelze": [],
+          "Getreide": [],
+          "Tuch": [],
+          "Hering": [],
+          "Wein": []
+        }
+      },
+      "missions": {
+        "hanse_privileg": {
+          "state": "active",
+          "city": "Riga",
+          "good": "Getreide",
+          "target": 120,
+          "delivered": 0,
+          "start": 0,
+          "deadline": 12,
+          "discount": 0.08,
+          "next_log": 30
+        },
+        "fleet_synergy": {
+          "state": "inactive",
+          "counts": {
+            "Grosse Kogge": 1,
+            "Holk": 0,
+            "Kraier": 0
+          }
+        },
+        "atheria_resonance": {
+          "state": "active",
+          "baseline": 8900,
+          "next_log": 1.25
+        },
+        "family_dynasty": {
+          "state": "inactive"
+        }
+      },
+      "alive": true,
+      "married": false,
+      "children": 0,
+      "turns_in_debt_tower": 0,
+      "chronicle": [
+        "ANNO 1368: Kontor in Bergen geoeffnet.",
+        "ANNO 1368: Grosse Kogge als neues Schiff erworben.",
+        "ANNO 1368: TEST von Bergen nach Luebeck entsandt."
+      ],
+      "investments": []
+    }
+  ],
+  "atheria_economy_engine": {
+    "atheria_root": "D:\\ATHERIA",
+    "refresh_interval_years": 5,
+    "demo_duration_seconds": 0.4,
+    "timeout_seconds": 25.0,
+    "last_refresh_year": 1368.0,
+    "last_error": null,
+    "metrics": {
+      "aether_density": 17.8889,
+      "aggregatform": "Plasma",
+      "phase": "plasma",
+      "system_temperature": 88.62,
+      "rhythm_state": "wake",
+      "rhythm_cycle": 0,
+      "structural_tension": 0.2433,
+      "tensegrity_support": 1,
+      "active_cells": 9,
+      "entropic_index": 0.4696,
+      "holographic_energy": 0.5302,
+      "enzymatic_compiled_paths": 11,
+      "resource_pool": 0.0,
+      "ather_credits": 24.0,
+      "market_role": "borrower",
+      "market_guardian_score": 0.166152,
+      "market_transactions": 0,
+      "market_borrow_events": 0,
+      "market_lend_events": 0,
+      "market_resources_in": 0.0,
+      "market_resources_out": 0.0,
+      "market_last_price": 0.0,
+      "market_last_partner": null,
+      "market_last_packet_quality": 0.0,
+      "autocatalytic_sets": 3,
+      "autocatalytic_activity": 0.0,
+      "aion_cycles": 0,
+      "aion_cycle_activity": 0.0,
+      "semantic_analogy_cells": 0,
+      "semantic_resource_spent": 0.0,
+      "evolved_cell_types": 0,
+      "evolved_runtime_mechanisms": 0,
+      "evolution_events": 0,
+      "evolution_program_signature": null,
+      "reproduction_events": 0,
+      "offspring_instances": 0,
+      "lineage_selection_trials": 0,
+      "lineage_selection_child_wins": 0,
+      "lineage_selection_parent_wins": 0,
+      "lineage_last_parent_fitness": 0.0,
+      "lineage_last_child_fitness": 0.0,
+      "reproduction_artifact_events": 0,
+      "reproduction_artifact_last_profile": null,
+      "reproduction_artifact_last_path": null,
+      "reproduction_artifact_last_integrity_path": null,
+      "reproduction_artifact_last_validated": false,
+      "reproduction_artifact_last_signature": null,
+      "ecological_complexity": 0.13684,
+      "selection_pressure": 0.608273,
+      "resource_scarcity": 0.62,
+      "fitness_gradient": -0.044242,
+      "epigenetic_silenced_edges": 6,
+      "mean_hyperbolic_distance": 2.487191,
+      "dream_replay_events": 0,
+      "dream_last_replay_labels": [],
+      "healing_events": 0,
+      "healing_last_repaired_labels": [],
+      "time_crystal_energy": 0.077074,
+      "time_crystal_targets": 4,
+      "singularity_activation": 0.693709,
+      "morphic_resonance_index": 0.281563,
+      "morphic_buffer_states": 1,
+      "intuition_spikes": 1,
+      "purpose_alignment": 0.420466,
+      "llm_sleep_rewriter_enabled": true,
+      "llm_rewrite_attempts": 0,
+      "llm_rewrite_accepts": 0,
+      "llm_rewrite_rejects": 0,
+      "llm_rewrite_errors": 0,
+      "llm_alias_updates": 0,
+      "llm_last_model": null,
+      "llm_last_reason": null,
+      "llm_last_error": null,
+      "llm_last_program_signature": null,
+      "llm_last_predicted_purpose_delta": 0.0,
+      "llm_trace_events": 0,
+      "llm_trace_path": "logs\\llm_rewrite_trace.jsonl",
+      "hgt_offers": 0,
+      "hgt_accepts": 0,
+      "hgt_rejects": 0,
+      "hgt_received": 0,
+      "hgt_donated": 0,
+      "hgt_last_partner": null,
+      "hgt_last_predicted_purpose_delta": 0.0,
+      "inter_core_dream_sync_events": 0,
+      "inter_core_dream_trauma_events": 0,
+      "inter_core_dream_peers": 0,
+      "inter_core_dream_coherence": 0.0,
+      "inter_core_dream_trauma_intensity": 0.0,
+      "global_population_size": 1,
+      "global_morphic_sync_events": 0,
+      "global_trauma_broadcast_events": 0,
+      "global_market_transactions": 0,
+      "global_market_last_price": 0.0,
+      "system_stress_index": 0.329982,
+      "purpose_homeostatic_temperature": 38.931265,
+      "aion_meditation_mode": false,
+      "topological_clusters": 1,
+      "topological_core_cells": 3,
+      "topological_edges": 6,
+      "entanglement_registry": {
+        "Sicherheit": [
+          "Reaktion"
+        ],
+        "Reaktion": [
+          "Sicherheit"
+        ]
+      },
+      "activations": {
+        "Sicherheit": 0.3135,
+        "Reaktion": 0.3135,
+        "Analyse": 0.5527,
+        "Navigation": 0.9682,
+        "Heilung": 0.9102,
+        "SingularityNode": 0.6989,
+        "PurposeNode": 0.4205,
+        "Gefahrenanalyse": 0.953,
+        "Notfallreaktion": 0.9718
+      },
+      "pressures": {
+        "Sicherheit": 32.0944,
+        "Reaktion": 32.0944,
+        "Analyse": 31.6845,
+        "Navigation": 26.2486,
+        "Heilung": 32.4726,
+        "SingularityNode": 42.1878,
+        "PurposeNode": 25.64,
+        "Gefahrenanalyse": 36.0714,
+        "Notfallreaktion": 31.5139
+      },
+      "hyperbolic_distance_sicherheit_reaktion": 2.928498,
+      "chemical_measurement": 0.9417,
+      "holographic_pattern_norm": 0.5302,
+      "field_query": {
+        "interference_energy": 0.632989,
+        "future_projection": [
+          0.11605651676654816,
+          0.17106381058692932,
+          0.10798371583223343,
+          0.10518109798431396,
+          0.08274607360363007,
+          0.11334104835987091,
+          0.0901280865073204,
+          0.10220091789960861,
+          0.10120166838169098,
+          0.08679229021072388,
+          0.1027994379401207,
+          0.06726908683776855
+        ],
+        "anticipatory_shift": 0.070032,
+        "morphic_resonance_index": 0.281563,
+        "uncertainty": 0.363763,
+        "response_tensor": [
+          0.1777876764535904,
+          0.24526482820510864,
+          0.12051224708557129,
+          0.21781739592552185,
+          0.12672099471092224,
+          0.1312161684036255,
+          0.18683940172195435,
+          0.2121122181415558,
+          0.14398878812789917,
+          0.18339884281158447,
+          0.18553508818149567,
+          0.2120770514011383
+        ],
+        "top_matches": [
+          {
+            "label": "SingularityNode",
+            "score": 0.934815
+          },
+          {
+            "label": "Heilung",
+            "score": 0.932793
+          },
+          {
+            "label": "Notfallreaktion",
+            "score": 0.930575
+          },
+          {
+            "label": "PurposeNode",
+            "score": 0.928999
+          }
+        ],
+        "future_top_matches": [
+          {
+            "label": "Notfallreaktion",
+            "score": 0.952539
+          },
+          {
+            "label": "SingularityNode",
+            "score": 0.951533
+          },
+          {
+            "label": "Gefahrenanalyse",
+            "score": 0.935841
+          },
+          {
+            "label": "PurposeNode",
+            "score": 0.933302
+          }
+        ]
+      }
+    },
+    "runtime_python": "D:\\ATHERIA\\.venv\\Scripts\\python.exe"
+  },
+  "atheria_economy_state": {
+    "year": 1368.0,
+    "global_growth": 0.8159606916346455,
+    "global_price_level": 1.4353551405939096,
+    "resource_scarcity": 0.62,
+    "good_factors": {
+      "Salz": 1.5755886108227068,
+      "Holz": 1.3566584568529156,
+      "Pelze": 1.513577774940124,
+      "Getreide": 1.8861817088486088,
+      "Tuch": 1.4315932042265918,
+      "Hering": 1.4672332684420784,
+      "Wein": 1.765636595866147
+    },
+    "city_factors": {
+      "Luebeck": 0.8542528485819699,
+      "Bergen": 0.7971537067196314,
+      "Toensberg": 0.8728304593274183,
+      "Warberg": 0.9109593268731561,
+      "Malmoe": 0.7967231002861471,
+      "Ystad": 0.9120564947252413,
+      "Visby": 0.9189760140327653,
+      "Riga": 0.8730302800892756,
+      "Novgorod": 0.9309430436090714
+    },
+    "source": "ATHERIA fortgeschrieben",
+    "summary": "ATHERIA fortgeschrieben | Wachstum 0.82 | Preisniveau 1.44 | Knappheit 0.62",
+    "raw_metrics": {
+      "aether_density": 17.8889,
+      "aggregatform": "Plasma",
+      "phase": "plasma",
+      "system_temperature": 88.62,
+      "rhythm_state": "wake",
+      "rhythm_cycle": 0,
+      "structural_tension": 0.2433,
+      "tensegrity_support": 1,
+      "active_cells": 9,
+      "entropic_index": 0.4696,
+      "holographic_energy": 0.5302,
+      "enzymatic_compiled_paths": 11,
+      "resource_pool": 0.0,
+      "ather_credits": 24.0,
+      "market_role": "borrower",
+      "market_guardian_score": 0.166152,
+      "market_transactions": 0,
+      "market_borrow_events": 0,
+      "market_lend_events": 0,
+      "market_resources_in": 0.0,
+      "market_resources_out": 0.0,
+      "market_last_price": 0.0,
+      "market_last_partner": null,
+      "market_last_packet_quality": 0.0,
+      "autocatalytic_sets": 3,
+      "autocatalytic_activity": 0.0,
+      "aion_cycles": 0,
+      "aion_cycle_activity": 0.0,
+      "semantic_analogy_cells": 0,
+      "semantic_resource_spent": 0.0,
+      "evolved_cell_types": 0,
+      "evolved_runtime_mechanisms": 0,
+      "evolution_events": 0,
+      "evolution_program_signature": null,
+      "reproduction_events": 0,
+      "offspring_instances": 0,
+      "lineage_selection_trials": 0,
+      "lineage_selection_child_wins": 0,
+      "lineage_selection_parent_wins": 0,
+      "lineage_last_parent_fitness": 0.0,
+      "lineage_last_child_fitness": 0.0,
+      "reproduction_artifact_events": 0,
+      "reproduction_artifact_last_profile": null,
+      "reproduction_artifact_last_path": null,
+      "reproduction_artifact_last_integrity_path": null,
+      "reproduction_artifact_last_validated": false,
+      "reproduction_artifact_last_signature": null,
+      "ecological_complexity": 0.13684,
+      "selection_pressure": 0.608273,
+      "resource_scarcity": 0.62,
+      "fitness_gradient": -0.044242,
+      "epigenetic_silenced_edges": 6,
+      "mean_hyperbolic_distance": 2.487191,
+      "dream_replay_events": 0,
+      "dream_last_replay_labels": [],
+      "healing_events": 0,
+      "healing_last_repaired_labels": [],
+      "time_crystal_energy": 0.077074,
+      "time_crystal_targets": 4,
+      "singularity_activation": 0.693709,
+      "morphic_resonance_index": 0.281563,
+      "morphic_buffer_states": 1,
+      "intuition_spikes": 1,
+      "purpose_alignment": 0.420466,
+      "llm_sleep_rewriter_enabled": true,
+      "llm_rewrite_attempts": 0,
+      "llm_rewrite_accepts": 0,
+      "llm_rewrite_rejects": 0,
+      "llm_rewrite_errors": 0,
+      "llm_alias_updates": 0,
+      "llm_last_model": null,
+      "llm_last_reason": null,
+      "llm_last_error": null,
+      "llm_last_program_signature": null,
+      "llm_last_predicted_purpose_delta": 0.0,
+      "llm_trace_events": 0,
+      "llm_trace_path": "logs\\llm_rewrite_trace.jsonl",
+      "hgt_offers": 0,
+      "hgt_accepts": 0,
+      "hgt_rejects": 0,
+      "hgt_received": 0,
+      "hgt_donated": 0,
+      "hgt_last_partner": null,
+      "hgt_last_predicted_purpose_delta": 0.0,
+      "inter_core_dream_sync_events": 0,
+      "inter_core_dream_trauma_events": 0,
+      "inter_core_dream_peers": 0,
+      "inter_core_dream_coherence": 0.0,
+      "inter_core_dream_trauma_intensity": 0.0,
+      "global_population_size": 1,
+      "global_morphic_sync_events": 0,
+      "global_trauma_broadcast_events": 0,
+      "global_market_transactions": 0,
+      "global_market_last_price": 0.0,
+      "system_stress_index": 0.329982,
+      "purpose_homeostatic_temperature": 38.931265,
+      "aion_meditation_mode": false,
+      "topological_clusters": 1,
+      "topological_core_cells": 3,
+      "topological_edges": 6,
+      "entanglement_registry": {
+        "Sicherheit": [
+          "Reaktion"
+        ],
+        "Reaktion": [
+          "Sicherheit"
+        ]
+      },
+      "activations": {
+        "Sicherheit": 0.3135,
+        "Reaktion": 0.3135,
+        "Analyse": 0.5527,
+        "Navigation": 0.9682,
+        "Heilung": 0.9102,
+        "SingularityNode": 0.6989,
+        "PurposeNode": 0.4205,
+        "Gefahrenanalyse": 0.953,
+        "Notfallreaktion": 0.9718
+      },
+      "pressures": {
+        "Sicherheit": 32.0944,
+        "Reaktion": 32.0944,
+        "Analyse": 31.6845,
+        "Navigation": 26.2486,
+        "Heilung": 32.4726,
+        "SingularityNode": 42.1878,
+        "PurposeNode": 25.64,
+        "Gefahrenanalyse": 36.0714,
+        "Notfallreaktion": 31.5139
+      },
+      "hyperbolic_distance_sicherheit_reaktion": 2.928498,
+      "chemical_measurement": 0.9417,
+      "holographic_pattern_norm": 0.5302,
+      "field_query": {
+        "interference_energy": 0.632989,
+        "future_projection": [
+          0.11605651676654816,
+          0.17106381058692932,
+          0.10798371583223343,
+          0.10518109798431396,
+          0.08274607360363007,
+          0.11334104835987091,
+          0.0901280865073204,
+          0.10220091789960861,
+          0.10120166838169098,
+          0.08679229021072388,
+          0.1027994379401207,
+          0.06726908683776855
+        ],
+        "anticipatory_shift": 0.070032,
+        "morphic_resonance_index": 0.281563,
+        "uncertainty": 0.363763,
+        "response_tensor": [
+          0.1777876764535904,
+          0.24526482820510864,
+          0.12051224708557129,
+          0.21781739592552185,
+          0.12672099471092224,
+          0.1312161684036255,
+          0.18683940172195435,
+          0.2121122181415558,
+          0.14398878812789917,
+          0.18339884281158447,
+          0.18553508818149567,
+          0.2120770514011383
+        ],
+        "top_matches": [
+          {
+            "label": "SingularityNode",
+            "score": 0.934815
+          },
+          {
+            "label": "Heilung",
+            "score": 0.932793
+          },
+          {
+            "label": "Notfallreaktion",
+            "score": 0.930575
+          },
+          {
+            "label": "PurposeNode",
+            "score": 0.928999
+          }
+        ],
+        "future_top_matches": [
+          {
+            "label": "Notfallreaktion",
+            "score": 0.952539
+          },
+          {
+            "label": "SingularityNode",
+            "score": 0.951533
+          },
+          {
+            "label": "Gefahrenanalyse",
+            "score": 0.935841
+          },
+          {
+            "label": "PurposeNode",
+            "score": 0.933302
+          }
+        ]
+      }
+    }
+  }
+}

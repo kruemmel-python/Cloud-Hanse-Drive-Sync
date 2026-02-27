@@ -4,6 +4,7 @@ import csv
 import json
 import os
 import hashlib
+import math
 import random
 import sys
 import traceback
@@ -14,46 +15,121 @@ from typing import Dict, List, Tuple
 import pygame
 
 from atheria_economy import AtheriaEconomyEngine, EconomyState
-from game_data import (
-    CITIES,
-    city_good_bias,
-    goods_for_year,
-    goods_unlocked_in_century,
-    max_cannons_for_ship,
-    MIN_NAME_LEN,
-    MONTHS,
-    HANSE_PRIVILEG_GOOD,
-    HANSE_PRIVILEG_QTY,
-    HANSE_PRIVILEG_MONTHS,
-    HANSE_PRIVILEG_DISCOUNT,
-    FLEET_SYNERGY_REQUIRED,
-    FLEET_SYNERGY_HULL_MIN,
-    FLEET_SYNERGY_HEUER_REDUCTION,
-    ATHERIA_RESONANCE_GROWTH_MAX,
-    ATHERIA_RESONANCE_TARGET_MULT,
-    DYNASTY_CHILDREN_TARGET,
-    DYNASTY_INHERITANCE_PER_CHILD,
-    DYNASTY_AGE_LIMIT,
-    SAVE_DIR,
-    SAVE_SLOT_COUNT,
-    SEA_FACTORS,
-    SEA_STATES,
-    STARTING_AGE,
-    STARTING_CASH,
-    STARTING_DEBT,
-    STARTING_MONTH,
-    STARTING_REPUTATION,
-    STARTING_YEAR,
-    modern_shipyard_for_year,
-    shipyard_for_year,
-    ships_unlocked_in_century,
-    title_steps_for_year,
-    titles_unlocked_in_century,
-    weapon_profile_for_century,
-    weapon_profile_for_year,
-    year_to_century,
+import game_data as _gd
+
+CITIES = _gd.CITIES
+city_good_bias = _gd.city_good_bias
+goods_for_year = _gd.goods_for_year
+goods_unlocked_in_century = _gd.goods_unlocked_in_century
+max_cannons_for_ship = _gd.max_cannons_for_ship
+MIN_NAME_LEN = _gd.MIN_NAME_LEN
+MONTHS = _gd.MONTHS
+HANSE_PRIVILEG_GOOD = _gd.HANSE_PRIVILEG_GOOD
+HANSE_PRIVILEG_QTY = _gd.HANSE_PRIVILEG_QTY
+HANSE_PRIVILEG_MONTHS = _gd.HANSE_PRIVILEG_MONTHS
+HANSE_PRIVILEG_DISCOUNT = _gd.HANSE_PRIVILEG_DISCOUNT
+FLEET_SYNERGY_REQUIRED = _gd.FLEET_SYNERGY_REQUIRED
+FLEET_SYNERGY_HULL_MIN = _gd.FLEET_SYNERGY_HULL_MIN
+FLEET_SYNERGY_HEUER_REDUCTION = _gd.FLEET_SYNERGY_HEUER_REDUCTION
+ATHERIA_RESONANCE_GROWTH_MAX = _gd.ATHERIA_RESONANCE_GROWTH_MAX
+ATHERIA_RESONANCE_TARGET_MULT = _gd.ATHERIA_RESONANCE_TARGET_MULT
+DYNASTY_CHILDREN_TARGET = _gd.DYNASTY_CHILDREN_TARGET
+DYNASTY_INHERITANCE_PER_CHILD = _gd.DYNASTY_INHERITANCE_PER_CHILD
+DYNASTY_AGE_LIMIT = _gd.DYNASTY_AGE_LIMIT
+SAVE_DIR = _gd.SAVE_DIR
+SAVE_SLOT_COUNT = _gd.SAVE_SLOT_COUNT
+SEA_FACTORS = _gd.SEA_FACTORS
+SEA_STATES = _gd.SEA_STATES
+STARTING_AGE = _gd.STARTING_AGE
+STARTING_CASH = _gd.STARTING_CASH
+STARTING_DEBT = _gd.STARTING_DEBT
+STARTING_MONTH = _gd.STARTING_MONTH
+STARTING_REPUTATION = _gd.STARTING_REPUTATION
+STARTING_YEAR = _gd.STARTING_YEAR
+shipyard_for_year = _gd.shipyard_for_year
+modern_shipyard_for_year = getattr(_gd, "modern_shipyard_for_year", shipyard_for_year)
+ships_unlocked_in_century = _gd.ships_unlocked_in_century
+title_steps_for_year = _gd.title_steps_for_year
+titles_unlocked_in_century = _gd.titles_unlocked_in_century
+weapon_profile_for_year = _gd.weapon_profile_for_year
+year_to_century = _gd.year_to_century
+birth_chance_for_year = getattr(_gd, "birth_chance_for_year", lambda _year: 0.24)
+child_mortality_for_year = getattr(_gd, "child_mortality_for_year", lambda _year: 0.10)
+disease_pressure_for_year = getattr(_gd, "disease_pressure_for_year", lambda _year: 0.20)
+max_children_for_year = getattr(
+    _gd,
+    "max_children_for_year",
+    lambda _year: max(3, int(getattr(_gd, "DYNASTY_CHILDREN_TARGET", 3))),
 )
+
+if hasattr(_gd, "weapon_profile_for_century"):
+    weapon_profile_for_century = _gd.weapon_profile_for_century
+else:
+    def weapon_profile_for_century(century: int) -> Dict[str, float | int | str]:
+        century_i = max(14, int(century))
+        year = (century_i - 1) * 100 + 1
+        return dict(weapon_profile_for_year(year))
 from models import Building, CityEconomy, NPCTrader, Player, ProductionRecipe, Ship, WorldEconomy
+try:
+    from research_manager import ResearchManager
+except Exception:
+    class ResearchManager:
+        base_cost_social: int = 8_000
+        base_cost_research: int = 500_000
+        base_cost_infrastructure: int = 350_000
+        base_cost_sophia: int = 750_000
+        growth: float = 1.85
+
+        def _base_cost(self, track: str) -> int:
+            key = str(track).strip().lower()
+            if key == "social":
+                return self.base_cost_social
+            if key == "infrastructure":
+                return self.base_cost_infrastructure
+            if key == "sophia":
+                return self.base_cost_sophia
+            return self.base_cost_research
+
+        def cost_for_level(self, track: str, level: int) -> int:
+            level_i = max(0, int(level))
+            base = float(self._base_cost(track))
+            scaled = base * (self.growth ** level_i) * (1.0 + math.log1p(level_i + 1))
+            return max(int(base), int(round(scaled)))
+
+        def level_from_spend(self, track: str, spend_total: float) -> int:
+            remaining = max(0.0, float(spend_total))
+            level = 0
+            while level < 200:
+                cost = float(self.cost_for_level(track, level))
+                if remaining < cost:
+                    break
+                remaining -= cost
+                level += 1
+            return level
+
+        def efficiency_reduction(self, level: int) -> float:
+            level_i = max(0, int(level))
+            if level_i <= 0:
+                return 0.0
+            return min(0.80, 0.20 + 0.08 * (level_i - 1))
+
+        def social_relief_gain(self, amount: float) -> float:
+            amount_f = max(0.0, float(amount))
+            return min(0.08, math.log1p(amount_f / 5_000.0) * 0.012)
+
+        def hazard_mitigation_gain(self, amount: float) -> float:
+            amount_f = max(0.0, float(amount))
+            return min(0.10, math.log1p(amount_f / 6_000.0) * 0.014)
+
+        def travel_time_multiplier(self, infrastructure_level: int, year: int) -> float:
+            level_i = max(0, int(infrastructure_level))
+            if int(year) < 2000:
+                return 1.0
+            return max(0.10, 1.0 - 0.12 * level_i)
+
+        def global_loss_value(self, sophia_spend: float) -> float:
+            spend = max(0.0, float(sophia_spend))
+            return min(0.85, math.log1p(spend / 1_000_000.0) * 0.12)
 
 
 WIDTH = 1320
@@ -86,6 +162,12 @@ AUTO_MAX_CANNON_BUYS = 2
 AUTO_TRADE_BUDGET_SHARE = 0.56
 AUTO_SHIP_BUILD_COOLDOWN_MONTHS = 3
 AUTO_MARRIAGE_POPUP_MS = 1700
+AUTO_MAX_SHIP_REPLACEMENTS_PER_MONTH = 2
+AUTO_MAX_SHARE_BUYS_PER_MONTH = 2
+AUTO_MAX_BUILDING_UPGRADES_PER_MONTH = 1
+AUTO_SHARE_INVEST_RESERVE_MARK = 9000
+AUTO_BUILDING_INVEST_RESERVE_MARK = 12000
+AUTO_BUILDING_LEVEL_CAP = 7
 
 WORLD_INITIAL_STOCK_MIN = 120
 WORLD_INITIAL_STOCK_MAX = 180
@@ -115,6 +197,33 @@ BAILOUT_MIN_AMOUNT = 500
 BAILOUT_INFLUENCE_COST = 4.0
 INFLUENCE_PER_SHARE_PURCHASE = 0.30
 INFLUENCE_PER_DIVIDEND_1000 = 0.35
+SOCIAL_WELFARE_MIN_AMOUNT = 2_000
+CITY_BAILOUT_MONUMENT_KEY = "stifter_monument"
+MONUMENT_STORAGE_MULTIPLIER = 2.0
+MONUMENT_REPUTATION_BONUS = 0.25
+CITY_MONUMENT_REPUTATION_BASE = 2
+
+TRACK_SOCIAL = "social"
+TRACK_RESEARCH = "research"
+TRACK_INFRASTRUCTURE = "infrastructure"
+TRACK_SOPHIA = "sophia"
+CITY_POP_MIN = 180
+CITY_POP_MAX = 5_000_000
+CHILD_MORTALITY_VULNERABLE_AGE = 6
+
+CENTURY_INSTITUTION_UNLOCKS: Dict[int, Dict[str, int]] = {
+    14: {"guild": 1, "watch": 1, "warehouse": 1},
+    15: {"academy": 1, "hospital": 1},
+    16: {"exchange": 1, "court": 1, "doctors": 1},
+    17: {"bank": 1, "dockyard": 1},
+    18: {"university": 1, "canal": 1},
+    19: {"rail_hub": 1, "sanitation": 1},
+    20: {"power_grid": 1, "industrial_port": 1},
+    21: {"digital_exchange": 1, "aether_lab": 1},
+}
+
+# Marktstabilisierung: globale Verlust-/Volatilitaetsdaempfung.
+global_loss_value = 0.0
 
 RECIPE_UNLOCK_CENTURY: Dict[str, int] = {
     "brewery": 14,
@@ -424,8 +533,19 @@ class PygameHanseApp:
         )
         self.world_economy = WorldEconomy()
         self.npcs: List[NPCTrader] = []
-        self.last_world_tick: Dict[str, int] = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
+        self.last_world_tick: Dict[str, int] = {
+            "producing_buildings": 0,
+            "npc_trades": 0,
+            "cities_bankrupt": 0,
+            "total_tax": 0,
+            "net_migration": 0,
+            "disease_cases": 0,
+            "disease_deaths": 0,
+        }
         self.last_dividend_pools: Dict[str, Dict[str, int]] = {}
+        self.research_manager = ResearchManager()
+        self.sophia_spend_total = 0.0
+        self.global_loss_value = 0.0
         self._ensure_world_state(reset_world=True, reset_npcs=True)
 
         self.selected_slot = 1
@@ -494,6 +614,7 @@ class PygameHanseApp:
         self.editor_weapon_rows: List[Tuple[int, pygame.Rect]] = []
         self.editor_weapon_list_rect: pygame.Rect | None = None
         self.editor_weapon_offset = 0
+        self.editor_weapon_visible_cache = 5
         self.messages: List[str] = [
             "Willkommen in Hanse (pygame).",
             "Neues Spiel anlegen oder Slot laden.",
@@ -714,6 +835,57 @@ class PygameHanseApp:
                 city.treasury = int(city.treasury)
             except (TypeError, ValueError):
                 city.treasury = 0
+            try:
+                city.population = max(CITY_POP_MIN, min(CITY_POP_MAX, int(city.population)))
+            except (TypeError, ValueError):
+                city.population = 2400
+            try:
+                city.infrastructure = max(0.6, float(city.infrastructure))
+            except (TypeError, ValueError):
+                city.infrastructure = 1.0
+            try:
+                city.social_stability = self._clamp(float(city.social_stability), 4.0, 100.0)
+            except (TypeError, ValueError):
+                city.social_stability = 50.0
+            try:
+                city.quality_of_life = self._clamp(float(city.quality_of_life), 4.0, 100.0)
+            except (TypeError, ValueError):
+                city.quality_of_life = 50.0
+            try:
+                city.disease_pressure = self._clamp(float(city.disease_pressure), 0.0, 1.2)
+            except (TypeError, ValueError):
+                city.disease_pressure = 0.0
+            try:
+                city.disease_cases = max(0, int(city.disease_cases))
+            except (TypeError, ValueError):
+                city.disease_cases = 0
+            try:
+                city.child_survival_rate = self._clamp(float(city.child_survival_rate), 0.15, 0.999)
+            except (TypeError, ValueError):
+                city.child_survival_rate = 0.75
+            try:
+                city.doctor_coverage = self._clamp(float(city.doctor_coverage), 0.0, 1.5)
+            except (TypeError, ValueError):
+                city.doctor_coverage = 0.0
+            try:
+                city.local_scarcity_relief = self._clamp(float(city.local_scarcity_relief), 0.0, 0.55)
+            except (TypeError, ValueError):
+                city.local_scarcity_relief = 0.0
+            try:
+                city.hazard_mitigation = self._clamp(float(city.hazard_mitigation), 0.0, 0.85)
+            except (TypeError, ValueError):
+                city.hazard_mitigation = 0.0
+            try:
+                city.storage_multiplier = max(1.0, float(city.storage_multiplier))
+            except (TypeError, ValueError):
+                city.storage_multiplier = 1.0
+            city.bankrupt = 1 if city.treasury <= CITY_BANKRUPTCY_LIMIT else int(bool(city.bankrupt))
+            if not isinstance(city.institutions, dict):
+                city.institutions = {}
+            if not isinstance(city.monuments, dict):
+                city.monuments = {}
+            self._normalize_social_classes(city)
+            self._apply_century_city_template(city_name, city)
 
         if reset_npcs or not isinstance(self.npcs, list):
             self.npcs = self._default_npcs()
@@ -753,12 +925,33 @@ class PygameHanseApp:
         city = self._city_economy(city_name)
         return max(0, int(city.inventory.get(good_name, 0)))
 
+    def _city_storage_capacity_from_city(self, city: CityEconomy) -> int:
+        base = 320
+        pop_part = max(0, int(city.population)) // 20
+        infra_part = int(max(0.0, float(city.infrastructure)) * 28)
+        institution_part = int(max(0, int(city.institutions.get("warehouse", 0))) * 90)
+        century_part = max(0, int(self.current_century) - 14) * 36
+        multiplier = max(1.0, float(city.storage_multiplier))
+        capacity = int(round((base + pop_part + infra_part + institution_part + century_part) * multiplier))
+        return max(180, capacity)
+
+    def _city_storage_capacity(self, city_name: str, good_name: str | None = None) -> int:
+        city = self._city_economy(city_name)
+        return self._city_storage_capacity_from_city(city)
+
     def _city_add_inventory(self, city_name: str, good_name: str, qty: int) -> int:
         if qty <= 0:
             return 0
         city = self._city_economy(city_name)
-        city.inventory[good_name] = city.inventory.get(good_name, 0) + int(qty)
-        return int(qty)
+        current = max(0, int(city.inventory.get(good_name, 0)))
+        capacity = self._city_storage_capacity(city_name, good_name)
+        if capacity <= current:
+            return 0
+        addable = min(int(qty), max(0, capacity - current))
+        if addable <= 0:
+            return 0
+        city.inventory[good_name] = current + addable
+        return int(addable)
 
     def _city_take_inventory(self, city_name: str, good_name: str, qty: int, min_remaining: int = 0) -> int:
         if qty <= 0:
@@ -770,6 +963,479 @@ class PygameHanseApp:
         if taken > 0:
             city.inventory[good_name] = stock - taken
         return taken
+
+    def _clamp(self, value: float, low: float, high: float) -> float:
+        return max(low, min(high, value))
+
+    def _format_compact_number(self, value: int | float) -> str:
+        try:
+            num = float(value)
+        except (TypeError, ValueError):
+            return "0"
+        abs_num = abs(num)
+        if abs_num >= 1_000_000_000_000:
+            return f"{num / 1_000_000_000_000:.2f}T"
+        if abs_num >= 1_000_000_000:
+            return f"{num / 1_000_000_000:.2f}B"
+        if abs_num >= 1_000_000:
+            return f"{num / 1_000_000:.2f}M"
+        if abs_num >= 1_000:
+            return f"{num / 1_000:.1f}K"
+        return str(int(round(num)))
+
+    def _investment_spend_total(self, track: str) -> float:
+        if self.player is None:
+            return 0.0
+        key = str(track).strip().lower()
+        if key == TRACK_SOPHIA:
+            return max(0.0, float(getattr(self, "sophia_spend_total", 0.0)))
+        return max(0.0, float(self.player.investments.get(key, 0.0)))
+
+    def _investment_level(self, track: str) -> int:
+        spend_total = self._investment_spend_total(track)
+        return self.research_manager.level_from_spend(track, spend_total)
+
+    def _next_investment_cost(self, track: str) -> int:
+        return self.research_manager.cost_for_level(track, self._investment_level(track))
+
+    def _institution_level(self, city: CityEconomy, key: str) -> int:
+        try:
+            return max(0, int(city.institutions.get(key, 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    def _normalize_social_classes(self, city: CityEconomy) -> None:
+        defaults = {
+            "peasants": 0.72,
+            "artisans": 0.18,
+            "merchants": 0.08,
+            "nobility": 0.02,
+        }
+        merged: Dict[str, float] = {}
+        for key, default_value in defaults.items():
+            try:
+                merged[key] = max(0.0, float(city.social_classes.get(key, default_value)))
+            except (TypeError, ValueError):
+                merged[key] = default_value
+        total = sum(merged.values())
+        if total <= 0:
+            city.social_classes = dict(defaults)
+            return
+        city.social_classes = {key: value / total for key, value in merged.items()}
+
+    def _apply_century_city_template(self, city_name: str, city: CityEconomy) -> None:
+        century = max(14, int(getattr(self, "current_century", year_to_century(self.current_year))))
+        city.century_stage = max(int(city.century_stage), century)
+        for unlock_century in sorted(CENTURY_INSTITUTION_UNLOCKS.keys()):
+            if unlock_century > century:
+                continue
+            institution_map = CENTURY_INSTITUTION_UNLOCKS[unlock_century]
+            target_level = 1 + max(0, century - unlock_century) // 3
+            for institution_key, base_level in institution_map.items():
+                current_level = self._institution_level(city, institution_key)
+                desired = max(base_level, min(target_level, base_level + 2))
+                if current_level < desired and city.treasury > (unlock_century - 13) * 180:
+                    city.institutions[institution_key] = desired
+
+        infra_target = 1.0 + (century - 14) * 0.22
+        infra_boost = (city.treasury / 45_000.0) + (self._institution_level(city, "canal") * 0.04)
+        city.infrastructure = self._clamp(
+            max(float(city.infrastructure), infra_target * 0.92) + max(0.0, infra_boost * 0.01),
+            0.6,
+            6.5,
+        )
+        base_qol = 48.0 + (century - 14) * 2.2
+        base_stability = 50.0 + (century - 14) * 1.8
+        city.quality_of_life = self._clamp(max(float(city.quality_of_life), base_qol * 0.90), 6.0, 100.0)
+        city.social_stability = self._clamp(max(float(city.social_stability), base_stability * 0.90), 6.0, 100.0)
+        self._normalize_social_classes(city)
+
+    def _city_social_attractiveness(self, city: CityEconomy) -> float:
+        bankrupt_penalty = 14.0 if int(city.bankrupt) else 0.0
+        institution_weight = sum(max(0, int(level)) for level in city.institutions.values()) * 0.55
+        disease_penalty = float(city.disease_pressure) * 24.0 + (
+            (float(city.disease_cases) / max(1.0, float(city.population))) * 900.0
+        )
+        return (
+            float(city.quality_of_life) * 0.52
+            + float(city.social_stability) * 0.36
+            + float(city.infrastructure) * 11.5
+            + institution_weight
+            - bankrupt_penalty
+            - disease_penalty
+        )
+
+    def _simulate_city_society(self) -> Dict[str, int]:
+        self._ensure_world_state()
+        century = max(14, int(self.current_century))
+        attractiveness: Dict[str, float] = {}
+        natural_change: Dict[str, int] = {}
+        total_tax = 0
+        total_disease_cases = 0
+        total_disease_deaths = 0
+
+        for city_name in CITIES:
+            city = self._city_economy(city_name)
+            self._apply_century_city_template(city_name, city)
+
+            food_stock = (
+                city.inventory.get("Getreide", 0)
+                + city.inventory.get("Hering", 0)
+                + city.inventory.get("Salz", 0)
+            )
+            food_need = max(140, int(city.population * 0.14))
+            food_ratio = food_stock / max(1, food_need)
+            producing = sum(1 for building in city.buildings if self._can_building_run(city, building))
+            production_ratio = producing / max(1, len(city.buildings))
+            hospital_lvl = self._institution_level(city, "hospital")
+            doctor_lvl = self._institution_level(city, "doctors")
+            academy_lvl = self._institution_level(city, "academy")
+            bank_lvl = self._institution_level(city, "bank")
+            digital_lvl = self._institution_level(city, "digital_exchange")
+            sanitation_lvl = self._institution_level(city, "sanitation")
+
+            storage_capacity = max(900.0, float(self._city_storage_capacity(city_name)))
+            crowding = self._clamp((city.population / storage_capacity) - 1.0, 0.0, 2.5)
+            supply_stress = self._clamp(1.0 - food_ratio, 0.0, 1.6)
+            base_disease_pressure = disease_pressure_for_year(self.current_year)
+            medical_quality = self._clamp(
+                0.18
+                + (hospital_lvl * 0.11)
+                + (doctor_lvl * 0.16)
+                + (sanitation_lvl * 0.08)
+                + (academy_lvl * 0.05)
+                + (float(city.hazard_mitigation) * 0.45),
+                0.08,
+                1.25,
+            )
+            city.doctor_coverage = self._clamp(
+                (hospital_lvl * 0.16 + doctor_lvl * 0.24 + sanitation_lvl * 0.10)
+                / max(1.0, city.population / 12_000.0),
+                0.0,
+                1.5,
+            )
+            disease_pressure = self._clamp(
+                base_disease_pressure
+                + (supply_stress * 0.22)
+                + (crowding * 0.08)
+                + (0.10 if city.bankrupt else 0.0)
+                - (medical_quality * 0.20)
+                - (city.infrastructure * 0.012),
+                0.01,
+                0.95,
+            )
+            outbreak_chance = self._clamp(
+                disease_pressure * (0.45 + base_disease_pressure * 1.70),
+                0.01,
+                0.55,
+            )
+            if self.rng.random() < outbreak_chance:
+                outbreak_factor = self.rng.uniform(0.85, 1.25)
+            else:
+                outbreak_factor = self.rng.uniform(0.20, 0.65)
+            disease_cases = int(
+                round(
+                    city.population
+                    * disease_pressure
+                    * (0.006 + base_disease_pressure * 0.030)
+                    * outbreak_factor
+                )
+            )
+            disease_cases = max(0, min(int(city.population * 0.35), disease_cases))
+            disease_death_rate = self._clamp(
+                0.015 + disease_pressure * 0.050 - medical_quality * 0.020,
+                0.002,
+                0.080,
+            )
+            disease_deaths = int(round(disease_cases * disease_death_rate))
+            city.disease_cases = disease_cases
+            city.disease_pressure = disease_pressure
+            city.child_survival_rate = self._clamp(
+                1.0
+                - child_mortality_for_year(self.current_year) * (1.20 - medical_quality)
+                - disease_pressure * 0.08,
+                0.25,
+                0.995,
+            )
+            total_disease_cases += disease_cases
+            total_disease_deaths += disease_deaths
+
+            bounded_treasury = self._clamp(float(city.treasury), -50_000.0, 250_000.0)
+            prosperity = (
+                (bounded_treasury / 4500.0)
+                + (production_ratio * 9.0)
+                + (bank_lvl * 1.2)
+                + (digital_lvl * 0.9)
+            )
+            disease_burden = disease_pressure * 1.6 + (disease_cases / max(1, city.population)) * 22.0
+            qol_delta = (
+                (food_ratio - 1.0) * 2.4
+                + (production_ratio - 0.45) * 1.4
+                + (hospital_lvl * 0.22)
+                + (doctor_lvl * 0.17)
+                + (academy_lvl * 0.16)
+                + (prosperity * 0.08)
+                - (disease_burden * 0.75)
+            )
+            if city.bankrupt:
+                qol_delta -= 0.9
+            stability_delta = (
+                (float(city.quality_of_life) - 50.0) / 130.0
+                + (food_ratio - 1.0) * 1.1
+                + (city.infrastructure - 1.0) * 0.22
+                + (academy_lvl * 0.10)
+                + (doctor_lvl * 0.07)
+                - (disease_burden * 0.55)
+            )
+            if city.bankrupt:
+                stability_delta -= 1.2
+
+            city.quality_of_life = self._clamp(float(city.quality_of_life) + qol_delta, 4.0, 100.0)
+            city.social_stability = self._clamp(float(city.social_stability) + stability_delta, 4.0, 100.0)
+
+            # Monatliches Wachstum bewusst klein halten, sonst explodiert die Population.
+            base_growth = 0.0004 + (century - 14) * 0.00008
+            growth_mod = (
+                (city.quality_of_life - 50.0) / 20_000.0
+                + (city.social_stability - 50.0) / 24_000.0
+                + (production_ratio - 0.45) / 600.0
+                - (disease_pressure / 700.0)
+            )
+            growth_rate = self._clamp(base_growth + growth_mod, -0.004, 0.006)
+            natural_change[city_name] = int(round(city.population * growth_rate)) - disease_deaths
+
+            tax_rate = 0.085 + (century - 14) * 0.004
+            tax_efficiency = self._clamp(0.58 + city.infrastructure * 0.12 + bank_lvl * 0.03, 0.30, 1.95)
+            tax_factor = self._clamp(
+                (city.social_stability / 100.0) * self._clamp(1.0 - disease_pressure * 0.25, 0.55, 1.0),
+                0.25,
+                1.20,
+            )
+            city.tax_income = max(0, int(round(city.population * tax_rate * tax_efficiency * tax_factor)))
+            city.treasury += city.tax_income
+            total_tax += city.tax_income
+            city.bankrupt = 1 if city.treasury <= CITY_BANKRUPTCY_LIMIT else 0
+
+            city.political_influence = self._clamp(
+                (city.population / 740.0)
+                + (city.infrastructure * 5.4)
+                + (city.social_stability * 0.25)
+                + (city.tax_income / 900.0),
+                0.0,
+                9999.0,
+            )
+            attractiveness[city_name] = self._city_social_attractiveness(city)
+
+        average_attractiveness = (
+            sum(attractiveness.values()) / len(attractiveness)
+            if attractiveness
+            else 0.0
+        )
+        total_migration = 0
+        for city_name in CITIES:
+            city = self._city_economy(city_name)
+            drift = attractiveness.get(city_name, average_attractiveness) - average_attractiveness
+            migration_rate = self._clamp(drift / 12_000.0, -0.0025, 0.0025)
+            migration_flow = int(round(city.population * migration_rate))
+            if city.bankrupt:
+                migration_flow -= max(6, int(city.population * 0.0015))
+            city.migration = migration_flow
+            total_migration += migration_flow
+
+        for city_name in CITIES:
+            city = self._city_economy(city_name)
+            delta = natural_change.get(city_name, 0) + int(city.migration)
+            if city.bankrupt and city.social_stability < 22.0 and city.quality_of_life < 24.0:
+                delta -= max(10, int(city.population * 0.003))
+            city.population = max(CITY_POP_MIN, min(CITY_POP_MAX, int(city.population) + int(delta)))
+
+            merchants_target = self._clamp(
+                0.08 + (century - 14) * 0.012 + (city.infrastructure - 1.0) * 0.02,
+                0.06,
+                0.46,
+            )
+            nobility_target = self._clamp(
+                0.02 + (century - 14) * 0.003 + (city.political_influence / 8000.0),
+                0.01,
+                0.12,
+            )
+            artisans_target = self._clamp(
+                0.18 + (city.infrastructure - 1.0) * 0.03 + (city.quality_of_life - 50.0) / 450.0,
+                0.14,
+                0.38,
+            )
+            peasants_target = max(0.12, 1.0 - merchants_target - nobility_target - artisans_target)
+            targets = {
+                "peasants": peasants_target,
+                "artisans": artisans_target,
+                "merchants": merchants_target,
+                "nobility": nobility_target,
+            }
+            current = dict(city.social_classes)
+            for class_key, target in targets.items():
+                try:
+                    current_value = float(current.get(class_key, target))
+                except (TypeError, ValueError):
+                    current_value = target
+                current[class_key] = current_value + (target - current_value) * 0.12
+            city.social_classes = current
+            self._normalize_social_classes(city)
+
+        return {
+            "total_tax": int(total_tax),
+            "net_migration": int(total_migration),
+            "disease_cases": int(total_disease_cases),
+            "disease_deaths": int(total_disease_deaths),
+        }
+
+    def invest_in_social_welfare(self, player: Player, city: str, amount: int) -> bool:
+        if player is None:
+            return False
+        city_name = str(city)
+        if city_name not in CITIES:
+            return False
+        city_economy = self._city_economy(city_name)
+        next_cost = self._next_investment_cost(TRACK_SOCIAL)
+        spend = max(int(amount), max(SOCIAL_WELFARE_MIN_AMOUNT, next_cost))
+        if player.money < spend:
+            self._log(f"Sozialstiftung {city_name}: benoetigt {spend} Mark.")
+            return False
+        player.money -= spend
+        player.investments[TRACK_SOCIAL] = self._investment_spend_total(TRACK_SOCIAL) + spend
+        social_level = self._investment_level(TRACK_SOCIAL)
+        city_economy.institutions["academy"] = max(self._institution_level(city_economy, "academy"), 1 + social_level // 3)
+        city_economy.institutions["hospital"] = max(self._institution_level(city_economy, "hospital"), 1 + social_level // 3)
+        city_economy.institutions["doctors"] = max(self._institution_level(city_economy, "doctors"), 1 + social_level // 4)
+        city_economy.local_scarcity_relief = self._clamp(
+            float(city_economy.local_scarcity_relief) + self.research_manager.social_relief_gain(spend),
+            0.0,
+            0.55,
+        )
+        city_economy.hazard_mitigation = self._clamp(
+            float(city_economy.hazard_mitigation) + self.research_manager.hazard_mitigation_gain(spend),
+            0.0,
+            0.85,
+        )
+        city_economy.quality_of_life = self._clamp(float(city_economy.quality_of_life) + 0.9 + social_level * 0.12, 4.0, 100.0)
+        city_economy.social_stability = self._clamp(float(city_economy.social_stability) + 0.7 + social_level * 0.09, 4.0, 100.0)
+        self._add_player_city_influence(city_name, 0.45 + (spend / 22_000.0))
+        self.market_cache.clear()
+        self._log(
+            f"Sozialstiftung {city_name}: -{spend} Mark | Knappheitsentlastung {city_economy.local_scarcity_relief:.2f} | "
+            f"Gefahrenabwehr {city_economy.hazard_mitigation:.2f}."
+        )
+        return True
+
+    def _city_bailout_cost(self, city_name: str) -> int:
+        city = self._city_economy(city_name)
+        debt = max(0, -int(city.treasury))
+        return max(BAILOUT_MIN_AMOUNT, int(round(debt * 1.18 + 1200)))
+
+    def execute_city_bailout(self, player: Player, city: str) -> bool:
+        if player is None:
+            return False
+        city_name = str(city)
+        if city_name not in CITIES:
+            return False
+        city_economy = self._city_economy(city_name)
+        city_economy.bankrupt = 1 if city_economy.treasury <= CITY_BANKRUPTCY_LIMIT else int(city_economy.bankrupt)
+        if city_economy.bankrupt != 1:
+            self._log(f"{city_name}: keine akute Rettung noetig.")
+            return False
+        bailout_cost = self._city_bailout_cost(city_name)
+        if player.money < bailout_cost:
+            self._log(f"Stadtrettung {city_name}: benoetigt {bailout_cost} Mark.")
+            return False
+        player.money -= bailout_cost
+        city_economy.treasury = max(CITY_RECOVERY_TARGET + 420, int(round(bailout_cost * 0.22)))
+        city_economy.bankrupt = 0
+        city_economy.storage_multiplier = max(float(city_economy.storage_multiplier), MONUMENT_STORAGE_MULTIPLIER)
+        city_economy.monuments[CITY_BAILOUT_MONUMENT_KEY] = city_economy.monuments.get(CITY_BAILOUT_MONUMENT_KEY, 0) + 1
+        city_economy.social_stability = self._clamp(float(city_economy.social_stability) + 8.0, 4.0, 100.0)
+        city_economy.quality_of_life = self._clamp(float(city_economy.quality_of_life) + 6.0, 4.0, 100.0)
+        city_economy.political_influence = self._clamp(float(city_economy.political_influence) + 4.0, 0.0, 9999.0)
+        self._add_player_city_influence(city_name, 4.5)
+        self.market_cache.clear()
+        self._log(
+            f"Stadtrettung {city_name}: -{bailout_cost} Mark | Stifter-Monument errichtet | Lager x{city_economy.storage_multiplier:.1f}."
+        )
+        return True
+
+    def invest_in_research_resonance(self, player: Player, amount: int = 0) -> bool:
+        if player is None:
+            return False
+        next_cost = self._next_investment_cost(TRACK_RESEARCH)
+        spend = max(int(amount), next_cost)
+        if player.money < spend:
+            self._log(f"Betriebsforschung: benoetigt {spend} Mark.")
+            return False
+        player.money -= spend
+        player.investments[TRACK_RESEARCH] = self._investment_spend_total(TRACK_RESEARCH) + spend
+        level = self._investment_level(TRACK_RESEARCH)
+        reduction = self.research_manager.efficiency_reduction(level)
+        self._log(
+            f"Betriebsforschung: -{spend} Mark | Level {level} | Inputbedarf -{reduction * 100:.1f}%."
+        )
+        return True
+
+    def invest_in_infrastructure(self, player: Player, amount: int = 0) -> bool:
+        if player is None:
+            return False
+        next_cost = self._next_investment_cost(TRACK_INFRASTRUCTURE)
+        spend = max(int(amount), next_cost)
+        if player.money < spend:
+            self._log(f"Reise-Infrastruktur: benoetigt {spend} Mark.")
+            return False
+        player.money -= spend
+        player.investments[TRACK_INFRASTRUCTURE] = self._investment_spend_total(TRACK_INFRASTRUCTURE) + spend
+        level = self._investment_level(TRACK_INFRASTRUCTURE)
+        multiplier = self.research_manager.travel_time_multiplier(level, self.current_year)
+        if player.city in CITIES:
+            city = self._city_economy(player.city)
+            city.infrastructure = self._clamp(float(city.infrastructure) + 0.08 + level * 0.01, 0.6, 6.5)
+        self._log(
+            f"Reise-Infrastruktur: -{spend} Mark | Level {level} | Reisezeitfaktor {multiplier:.2f}."
+        )
+        return True
+
+    def invest_in_algorithmic_harmony(self, player: Player, amount: int = 0) -> bool:
+        if player is None:
+            return False
+        sophia_level = self._investment_level(TRACK_SOPHIA)
+        next_cost = self.research_manager.cost_for_level(TRACK_SOPHIA, sophia_level)
+        spend = max(int(amount), next_cost)
+        if player.money < spend:
+            self._log(f"Marktstabilisierung: benoetigt {spend} Mark.")
+            return False
+        player.money -= spend
+        self.sophia_spend_total = max(0.0, float(self.sophia_spend_total) + spend)
+        self.global_loss_value = self.research_manager.global_loss_value(self.sophia_spend_total)
+        global global_loss_value
+        global_loss_value = self.global_loss_value
+        self.market_cache.clear()
+        self._log(
+            f"Marktstabilisierung: -{spend} Mark | Level {self._investment_level(TRACK_SOPHIA)} | "
+            f"Preisschwankung-Daempfung {self.global_loss_value:.2f}."
+        )
+        return True
+
+    def _travel_turns_for_distance(self, distance: int) -> int:
+        base_distance = max(1, int(distance))
+        infra_level = self._investment_level(TRACK_INFRASTRUCTURE)
+        multiplier = self.research_manager.travel_time_multiplier(infra_level, self.current_year)
+        turns = int(math.ceil(base_distance * multiplier))
+        return max(1, turns)
+
+    def _player_monument_reputation_multiplier(self) -> float:
+        if self.player is None:
+            return 1.0
+        monuments = 0
+        for city_name in CITIES:
+            city = self._city_economy(city_name)
+            monuments += max(0, int(city.monuments.get(CITY_BAILOUT_MONUMENT_KEY, 0)))
+        if monuments <= 0:
+            return 1.0
+        return self._clamp(1.0 + monuments * MONUMENT_REPUTATION_BONUS, 1.0, 3.0)
 
     def _player_city_influence(self, city_name: str) -> float:
         if self.player is None:
@@ -820,7 +1486,9 @@ class PygameHanseApp:
         return max(60, model_price)
 
     def _city_is_bankrupt(self, city_name: str) -> bool:
-        return self._city_economy(city_name).treasury <= CITY_BANKRUPTCY_LIMIT
+        city = self._city_economy(city_name)
+        city.bankrupt = 1 if int(city.treasury) <= CITY_BANKRUPTCY_LIMIT else int(bool(city.bankrupt))
+        return bool(city.bankrupt)
 
     def _building_dividend_pool(self, city_name: str, recipe_id: str) -> int:
         city_pool = self.last_dividend_pools.get(city_name, {})
@@ -892,31 +1560,19 @@ class PygameHanseApp:
     def _bailout_city(self, city_name: str, amount: int = 1000) -> None:
         if self.player is None:
             return
-        influence = self._player_city_influence(city_name)
-        if influence < MIN_BAILOUT_INFLUENCE:
-            self._log(
-                f"Zu wenig Einfluss in {city_name} ({influence:.1f}/{MIN_BAILOUT_INFLUENCE:.1f}) fuer Rettungsfonds."
-            )
-            return
-        amount_i = max(BAILOUT_MIN_AMOUNT, int(amount))
-        if self.player.money < amount_i:
-            self._log("Nicht genug Mark fuer Rettungsfonds.")
-            return
         city = self._city_economy(city_name)
-        rescue_bonus = min(0.60, influence / 200.0)
-        treasury_gain = int(round(amount_i * (1.0 + rescue_bonus)))
-        self.player.money -= amount_i
-        city.treasury += treasury_gain
-        self._add_player_city_influence(city_name, -BAILOUT_INFLUENCE_COST)
-        status = "stabilisiert" if city.treasury >= CITY_RECOVERY_TARGET else "weiter kritisch"
-        self._log(
-            f"Rettungsfonds {city_name}: -{amount_i} Mark, Stadtkasse +{treasury_gain} ({status}, {city.treasury})."
-        )
+        city.bankrupt = 1 if city.treasury <= CITY_BANKRUPTCY_LIMIT else int(city.bankrupt)
+        if city.bankrupt != 1:
+            self._log(f"{city_name}: keine Rettung noetig.")
+            return
+        self.execute_city_bailout(self.player, city_name)
 
     def _tick_world_production(self) -> int:
         self._ensure_world_state()
         active_goods = set(self._active_good_names())
         current_century = self.current_century
+        research_level = self._investment_level(TRACK_RESEARCH)
+        efficiency_reduction = self.research_manager.efficiency_reduction(research_level)
         active_buildings = 0
         self.last_dividend_pools = {city_name: {} for city_name in CITIES}
         for city_name in CITIES:
@@ -943,7 +1599,11 @@ class PygameHanseApp:
                 can_run = True
                 input_total = 0
                 for good_name, qty in recipe.inputs.items():
-                    required = max(0, int(qty)) * level
+                    base_required = max(0, int(qty)) * level
+                    if base_required <= 0:
+                        required = 0
+                    else:
+                        required = max(1, int(math.ceil(base_required * (1.0 - efficiency_reduction))))
                     if city.inventory.get(good_name, 0) < required:
                         can_run = False
                         break
@@ -953,12 +1613,22 @@ class PygameHanseApp:
 
                 output_total = 0
                 for good_name, qty in recipe.inputs.items():
-                    required = max(0, int(qty)) * level
+                    base_required = max(0, int(qty)) * level
+                    if base_required <= 0:
+                        required = 0
+                    else:
+                        required = max(1, int(math.ceil(base_required * (1.0 - efficiency_reduction))))
                     city.inventory[good_name] = max(0, int(city.inventory.get(good_name, 0)) - required)
                 for good_name, qty in recipe.outputs.items():
                     produced = max(0, int(qty)) * level
-                    city.inventory[good_name] = int(city.inventory.get(good_name, 0)) + produced
-                    output_total += produced
+                    if good_name not in active_goods:
+                        continue
+                    current_stock = max(0, int(city.inventory.get(good_name, 0)))
+                    capacity = self._city_storage_capacity_from_city(city)
+                    added = min(produced, max(0, capacity - current_stock))
+                    if added > 0:
+                        city.inventory[good_name] = current_stock + added
+                    output_total += added
                 city.treasury -= max(0, int(recipe.upkeep)) * level
                 operating_value = max(
                     0,
@@ -1039,6 +1709,7 @@ class PygameHanseApp:
     def _run_world_month_tick(self) -> Dict[str, int]:
         production_count = self._tick_world_production()
         npc_trade_count = self._tick_world_npcs()
+        social_metrics = self._simulate_city_society()
         bankrupt_count = sum(1 for city_name in CITIES if self._city_is_bankrupt(city_name))
         # NPCs handeln vor dem Spieler. Danach bleiben Preise fuer den Monat gecached stabil.
         self.market_cache.clear()
@@ -1046,6 +1717,10 @@ class PygameHanseApp:
             "producing_buildings": production_count,
             "npc_trades": npc_trade_count,
             "cities_bankrupt": bankrupt_count,
+            "total_tax": int(social_metrics.get("total_tax", 0)),
+            "net_migration": int(social_metrics.get("net_migration", 0)),
+            "disease_cases": int(social_metrics.get("disease_cases", 0)),
+            "disease_deaths": int(social_metrics.get("disease_deaths", 0)),
         }
         return dict(self.last_world_tick)
 
@@ -1350,6 +2025,19 @@ class PygameHanseApp:
                     row("city", city_name, "", "treasury", city.treasury, "Mark")
                     row("city", city_name, "", "bankrupt", int(self._city_is_bankrupt(city_name)))
                     row("city", city_name, "", "building_count", len(city.buildings), "count")
+                    row("city", city_name, "", "population", city.population, "citizens")
+                    row("city", city_name, "", "social_stability", f"{city.social_stability:.2f}")
+                    row("city", city_name, "", "quality_of_life", f"{city.quality_of_life:.2f}")
+                    row("city", city_name, "", "migration", city.migration, "citizens")
+                    row("city", city_name, "", "tax_income", city.tax_income, "Mark")
+                    row("city", city_name, "", "disease_pressure", f"{city.disease_pressure:.4f}")
+                    row("city", city_name, "", "disease_cases", city.disease_cases, "citizens")
+                    row("city", city_name, "", "child_survival_rate", f"{city.child_survival_rate:.4f}")
+                    row("city", city_name, "", "doctor_coverage", f"{city.doctor_coverage:.4f}")
+                    row("city", city_name, "", "political_influence", f"{city.political_influence:.2f}")
+                    row("city", city_name, "", "local_scarcity_relief", f"{city.local_scarcity_relief:.4f}")
+                    row("city", city_name, "", "hazard_mitigation", f"{city.hazard_mitigation:.4f}")
+                    row("city", city_name, "", "storage_multiplier", f"{city.storage_multiplier:.2f}")
                     prices = self._market_prices(city_name)
                     for good_name in self._active_good_names():
                         row("city_inventory", city_name, good_name, "stock", city.inventory.get(good_name, 0), "units")
@@ -1389,7 +2077,32 @@ class PygameHanseApp:
                 row("player", self.player.name, "", "debt", self.player.debt, "Mark")
                 row("player", self.player.name, "", "reputation", self.player.reputation)
                 row("player", self.player.name, "", "age", self.player.age, "years")
+                row("player", self.player.name, "", "children", self.player.children, "count")
+                row("player", self.player.name, "", "children_limit", self._current_max_children(), "count")
                 row("player", self.player.name, "", "net_worth", self._net_worth(self.player, prices), "Mark")
+                row("investment_impact", self.player.name, "", "social_spend", f"{self._investment_spend_total(TRACK_SOCIAL):.2f}", "Mark")
+                row("investment_impact", self.player.name, "", "social_level", self._investment_level(TRACK_SOCIAL), "level")
+                row("investment_impact", self.player.name, "", "research_spend", f"{self._investment_spend_total(TRACK_RESEARCH):.2f}", "Mark")
+                row("investment_impact", self.player.name, "", "research_level", self._investment_level(TRACK_RESEARCH), "level")
+                row(
+                    "investment_impact",
+                    self.player.name,
+                    "",
+                    "efficiency_reduction",
+                    f"{self.research_manager.efficiency_reduction(self._investment_level(TRACK_RESEARCH)):.4f}",
+                )
+                row("investment_impact", self.player.name, "", "infrastructure_spend", f"{self._investment_spend_total(TRACK_INFRASTRUCTURE):.2f}", "Mark")
+                row("investment_impact", self.player.name, "", "infrastructure_level", self._investment_level(TRACK_INFRASTRUCTURE), "level")
+                row(
+                    "investment_impact",
+                    self.player.name,
+                    "",
+                    "travel_time_multiplier",
+                    f"{self.research_manager.travel_time_multiplier(self._investment_level(TRACK_INFRASTRUCTURE), self.current_year):.4f}",
+                )
+                row("investment_impact", self.player.name, "", "sophia_spend", f"{self.sophia_spend_total:.2f}", "Mark")
+                row("investment_impact", self.player.name, "", "sophia_level", self._investment_level(TRACK_SOPHIA), "level")
+                row("investment_impact", self.player.name, "", "global_loss_value", f"{self.global_loss_value:.4f}")
                 for city_name, score in self.player.city_influence.items():
                     row("player_influence", self.player.name, city_name, "score", f"{float(score):.2f}")
                 for mission_key, mission_data in self.player.missions.items():
@@ -1466,18 +2179,34 @@ class PygameHanseApp:
             "selected_dest": 0,
             "selected_weapon_century": year_to_century(self.current_year),
             "editor_weapon_offset": 0,
+            "editor_weapon_visible_cache": 5,
             "info_scroll": 0,
             "info_max_scroll": 0,
             "info_open": False,
             "selected_city_building_recipe": "",
             "auto_popup_hold_until": 0,
             "auto_last_ship_build_month": -9999,
-            "last_world_tick": {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0},
+            "last_world_tick": {
+                "producing_buildings": 0,
+                "npc_trades": 0,
+                "cities_bankrupt": 0,
+                "total_tax": 0,
+                "net_migration": 0,
+                "disease_cases": 0,
+                "disease_deaths": 0,
+            },
             "last_dividend_pools": {},
+            "sophia_spend_total": 0.0,
+            "global_loss_value": 0.0,
         }
         for key, value in runtime_defaults.items():
             if not hasattr(self, key):
                 setattr(self, key, value)
+        global global_loss_value
+        try:
+            global_loss_value = max(0.0, min(0.85, float(getattr(self, "global_loss_value", 0.0))))
+        except (TypeError, ValueError):
+            global_loss_value = 0.0
         if not hasattr(self, "editor_weapon_rows") or not isinstance(self.editor_weapon_rows, list):
             self.editor_weapon_rows = []
         if not hasattr(self, "editor_weapon_list_rect"):
@@ -1500,6 +2229,13 @@ class PygameHanseApp:
                 self.player.building_shares = {}
             if not hasattr(self.player, "city_influence") or not isinstance(self.player.city_influence, dict):
                 self.player.city_influence = {}
+            if not hasattr(self.player, "investments") or not isinstance(self.player.investments, dict):
+                self.player.investments = {"social": 0.0, "research": 0.0, "infrastructure": 0.0}
+            for inv_key in ("social", "research", "infrastructure"):
+                try:
+                    self.player.investments[inv_key] = max(0.0, float(self.player.investments.get(inv_key, 0.0)))
+                except (TypeError, ValueError):
+                    self.player.investments[inv_key] = 0.0
             if not hasattr(self.player, "married"):
                 self.player.married = False
             if not hasattr(self.player, "spouse_name"):
@@ -1512,6 +2248,8 @@ class PygameHanseApp:
                 self.player.children = 0
             if not hasattr(self.player, "child_names") or not isinstance(self.player.child_names, list):
                 self.player.child_names = []
+            if not hasattr(self.player, "child_ages") or not isinstance(self.player.child_ages, dict):
+                self.player.child_ages = {}
             if not hasattr(self.player, "last_marriage_offer_month"):
                 self.player.last_marriage_offer_month = -9999
             if not hasattr(self.player, "turns_in_debt_tower"):
@@ -1520,6 +2258,14 @@ class PygameHanseApp:
                 self.player.chronicle = []
             if self.player.children < len(self.player.child_names):
                 self.player.children = len(self.player.child_names)
+            for child_name in self.player.child_names:
+                try:
+                    self.player.child_ages[child_name] = max(0, int(self.player.child_ages.get(child_name, 6)))
+                except (TypeError, ValueError):
+                    self.player.child_ages[child_name] = 6
+            for stored_name in list(self.player.child_ages.keys()):
+                if stored_name not in self.player.child_names:
+                    self.player.child_ages.pop(stored_name, None)
             for ship in getattr(self.player, "ships", []):
                 if not hasattr(ship, "cargo") or not isinstance(ship.cargo, dict):
                     ship.cargo = {}
@@ -1556,6 +2302,8 @@ class PygameHanseApp:
                 city_name: {recipe_id: int(value) for recipe_id, value in pool.items()}
                 for city_name, pool in self.last_dividend_pools.items()
             },
+            "sophia_spend_total": float(self.sophia_spend_total),
+            "global_loss_value": float(self.global_loss_value),
             "market_cache": {key: dict(value) for key, value in self.market_cache.items()},
             "current_century": self.current_century,
             "preview_destination": self.preview_destination,
@@ -1595,9 +2343,21 @@ class PygameHanseApp:
                 "producing_buildings": int(last_world_tick.get("producing_buildings", 0)),
                 "npc_trades": int(last_world_tick.get("npc_trades", 0)),
                 "cities_bankrupt": int(last_world_tick.get("cities_bankrupt", 0)),
+                "total_tax": max(0, min(9_999_999_999, int(last_world_tick.get("total_tax", 0)))),
+                "net_migration": max(-999_999_999, min(999_999_999, int(last_world_tick.get("net_migration", 0)))),
+                "disease_cases": max(0, min(9_999_999, int(last_world_tick.get("disease_cases", 0)))),
+                "disease_deaths": max(0, min(9_999_999, int(last_world_tick.get("disease_deaths", 0)))),
             }
         else:
-            self.last_world_tick = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
+            self.last_world_tick = {
+                "producing_buildings": 0,
+                "npc_trades": 0,
+                "cities_bankrupt": 0,
+                "total_tax": 0,
+                "net_migration": 0,
+                "disease_cases": 0,
+                "disease_deaths": 0,
+            }
         dividend_data = snapshot.get("last_dividend_pools")
         self.last_dividend_pools = {}
         if isinstance(dividend_data, dict):
@@ -1612,6 +2372,14 @@ class PygameHanseApp:
                     except (TypeError, ValueError):
                         continue
                 self.last_dividend_pools[city_name] = pool
+        try:
+            self.sophia_spend_total = max(0.0, float(snapshot.get("sophia_spend_total", self.sophia_spend_total)))
+        except (TypeError, ValueError):
+            self.sophia_spend_total = 0.0
+        try:
+            self.global_loss_value = max(0.0, min(0.85, float(snapshot.get("global_loss_value", self.global_loss_value))))
+        except (TypeError, ValueError):
+            self.global_loss_value = 0.0
         market_cache = snapshot.get("market_cache")
         if isinstance(market_cache, dict):
             self.market_cache = {}
@@ -1645,7 +2413,7 @@ class PygameHanseApp:
         return 3
 
     def _editor_weapon_visible_count(self) -> int:
-        return 5
+        return max(1, int(getattr(self, "editor_weapon_visible_cache", 5)))
 
     def _max_market_goods_offset(self) -> int:
         return max(0, len(self._active_good_names()) - self._market_visible_count())
@@ -2172,6 +2940,8 @@ class PygameHanseApp:
             self.city_goods_offset = 0
         elif key == "game_missions":
             self.missions_open = True
+        elif key == "game_heir":
+            self._conceive_heir()
         elif key == "game_info":
             self.info_open = True
             self.info_scroll = 0
@@ -2358,10 +3128,260 @@ class PygameHanseApp:
         distance = abs(CITIES.index(origin) - CITIES.index(target)) + 1
         return 60 + distance * 25
 
+    def _auto_pick_modern_ship_index(self, budget: int) -> int | None:
+        shipyard = self._active_shipyard()
+        if not shipyard:
+            return None
+        budget_i = max(0, int(budget))
+        affordable: List[Tuple[int, int, int, int]] = []
+        for idx, (_name, cap, value, cost) in enumerate(shipyard):
+            if cost <= budget_i:
+                affordable.append((cap, value, -cost, idx))
+        if not affordable:
+            return None
+        return max(affordable)[3]
+
+    def _auto_replace_outdated_ship(self, old_ship: Ship) -> bool:
+        if self.player is None:
+            return False
+        if old_ship not in self.player.ships:
+            return False
+        if old_ship.is_at_sea or old_ship.total_cargo > 0:
+            return False
+
+        shipyard = self._active_shipyard()
+        if not shipyard:
+            return False
+        latest_idx = max(
+            range(len(shipyard)),
+            key=lambda idx: (shipyard[idx][1], shipyard[idx][2], shipyard[idx][3]),
+        )
+        old_city = old_ship.city
+        self.player.city = old_city
+        old_idx = self.player.ships.index(old_ship)
+        self.selected_fleet_ship = old_idx
+        reserve = max(self._auto_player_reserve(), 1400)
+        immediate_budget = max(0, self.player.money - reserve)
+        immediate_idx = self._auto_pick_modern_ship_index(immediate_budget)
+        if immediate_idx is not None:
+            before = len(self.player.ships)
+            self.selected_ship_type = immediate_idx
+            self._buy_selected_ship_type()
+            if len(self.player.ships) > before and old_ship in self.player.ships:
+                self.player.city = old_city
+                self.selected_fleet_ship = self.player.ships.index(old_ship)
+                self._sell_selected_ship()
+                return True
+
+        sale_value = self._ship_sale_price(old_ship)
+        delayed_budget = max(0, self.player.money + sale_value - reserve)
+        delayed_idx = self._auto_pick_modern_ship_index(delayed_budget)
+        if delayed_idx is None:
+            return False
+
+        # Mit nur einem Schiff keine aggressive Ersetzung, wenn danach zu wenig Handelsreserve bleibt.
+        if len(self.player.ships) <= 1 and delayed_idx == latest_idx and delayed_budget < shipyard[delayed_idx][3]:
+            return False
+
+        if old_ship in self.player.ships:
+            self.player.city = old_city
+            self.selected_fleet_ship = self.player.ships.index(old_ship)
+            self._sell_selected_ship()
+        self.player.city = old_city
+        before = len(self.player.ships)
+        self.selected_ship_type = delayed_idx
+        self._buy_selected_ship_type()
+        return len(self.player.ships) > before
+
+    def _auto_modernize_fleet(self) -> None:
+        if self.player is None or self.player.turns_in_debt_tower > 0:
+            return
+        shipyard = self._active_shipyard()
+        if not shipyard:
+            return
+        modern_names = {name for name, *_ in shipyard}
+        replaced = 0
+        candidates = [
+            ship
+            for ship in self.player.ships
+            if ship.name not in modern_names and not ship.is_at_sea and ship.total_cargo <= 0
+        ]
+        for ship in candidates:
+            if replaced >= AUTO_MAX_SHIP_REPLACEMENTS_PER_MONTH:
+                break
+            if ship not in self.player.ships:
+                continue
+            if self._auto_replace_outdated_ship(ship):
+                replaced += 1
+        if replaced > 0:
+            self._log(f"Auto-Modernisierung: {replaced} veraltete Schiffe ersetzt.")
+
+    def _auto_refresh_ship_weaponry(self, ship: Ship) -> None:
+        if ship.is_at_sea:
+            return
+        if not hasattr(ship, "cannon_inventory") or not isinstance(ship.cannon_inventory, dict):
+            ship.cannon_inventory = {}
+        current_key = str(max(14, int(self.current_century)))
+        normalized: Dict[str, int] = {}
+        for raw_key, raw_qty in ship.cannon_inventory.items():
+            try:
+                qty_i = max(0, int(raw_qty))
+            except (TypeError, ValueError):
+                continue
+            if qty_i > 0:
+                normalized[str(raw_key)] = qty_i
+
+        if ship.cannons <= 0:
+            if normalized:
+                ship.cannon_inventory = {}
+            return
+
+        old_qty = sum(qty for key, qty in normalized.items() if key != current_key)
+        current_qty = max(0, int(normalized.get(current_key, 0)))
+        if old_qty > 0 or current_qty != ship.cannons:
+            ship.cannon_inventory = {current_key: int(ship.cannons)}
+            if old_qty > 0:
+                self._log(f"Auto-Aufruestung: {ship.display_name} auf Kanonenstufe C{current_key} vereinheitlicht.")
+
+    def _auto_building_upgrade_cost(self, city_name: str, building: Building) -> int:
+        unlock = RECIPE_UNLOCK_CENTURY.get(building.id, 14)
+        level = max(1, int(building.level))
+        base = self._share_price_per_percent(city_name, building)
+        return max(1000, int(round(base * (6 + level * 0.9) + unlock * 40)))
+
+    def _auto_invest_city_economy(self) -> None:
+        if self.player is None or self.player.turns_in_debt_tower > 0:
+            return
+
+        share_reserve = max(self._auto_player_reserve(), AUTO_SHARE_INVEST_RESERVE_MARK)
+        share_buys = 0
+        share_candidates: List[Tuple[float, float, int, str, str]] = []
+        for city_name in CITIES:
+            city = self._city_economy(city_name)
+            influence = self._player_city_influence(city_name)
+            for building in city.buildings:
+                recipe = PRODUCTION_RECIPES.get(building.id)
+                if recipe is None:
+                    continue
+                if RECIPE_UNLOCK_CENTURY.get(building.id, 14) > self.current_century:
+                    continue
+                sold_pct = self._total_building_share_percent(city_name, building.id)
+                free_pct = max(0.0, MAX_BUILDING_SHARE_PERCENT - sold_pct)
+                if free_pct < 1.0:
+                    continue
+                price_per_pct = self._share_price_per_percent(city_name, building)
+                if price_per_pct <= 0:
+                    continue
+                pool = self._building_dividend_pool(city_name, building.id)
+                score = float(pool) + influence * 38.0 + max(1, int(building.level)) * 24.0
+                share_candidates.append((score, influence, price_per_pct, city_name, building.id))
+        share_candidates.sort(key=lambda item: (item[0], item[1], -item[2]), reverse=True)
+        for _score, _influence, price_per_pct, city_name, recipe_id in share_candidates:
+            if share_buys >= AUTO_MAX_SHARE_BUYS_PER_MONTH:
+                break
+            buy_pct = 5
+            if self.player.money - (price_per_pct * buy_pct) < share_reserve:
+                continue
+            before = self._player_building_share_percent(city_name, recipe_id)
+            self._buy_city_building_shares(city_name, recipe_id, pct=buy_pct)
+            after = self._player_building_share_percent(city_name, recipe_id)
+            if after > before:
+                share_buys += 1
+
+        building_reserve = max(self._auto_player_reserve(), AUTO_BUILDING_INVEST_RESERVE_MARK)
+        upgrades = 0
+        upgrade_candidates: List[Tuple[float, int, str, str]] = []
+        for city_name in CITIES:
+            city = self._city_economy(city_name)
+            influence = self._player_city_influence(city_name)
+            for building in city.buildings:
+                if RECIPE_UNLOCK_CENTURY.get(building.id, 14) > self.current_century:
+                    continue
+                if not building.active:
+                    continue
+                level = max(1, int(building.level))
+                if level >= AUTO_BUILDING_LEVEL_CAP:
+                    continue
+                owned_share = self._player_building_share_percent(city_name, building.id)
+                if owned_share <= 0 and influence < 4.0:
+                    continue
+                cost = self._auto_building_upgrade_cost(city_name, building)
+                score = owned_share * 2.0 + influence * 0.8 + level * 0.35
+                upgrade_candidates.append((score, -cost, city_name, building.id))
+        upgrade_candidates.sort(reverse=True)
+        for _score, neg_cost, city_name, recipe_id in upgrade_candidates:
+            if upgrades >= AUTO_MAX_BUILDING_UPGRADES_PER_MONTH:
+                break
+            cost = -neg_cost
+            if self.player.money - cost < building_reserve:
+                continue
+            city = self._city_economy(city_name)
+            building = next((entry for entry in city.buildings if entry.id == recipe_id), None)
+            if building is None:
+                continue
+            level_before = max(1, int(building.level))
+            if level_before >= AUTO_BUILDING_LEVEL_CAP:
+                continue
+            self.player.money -= cost
+            building.level = level_before + 1
+            city.treasury += int(round(cost * 0.38))
+            self._add_player_city_influence(city_name, 0.32 + level_before * 0.04)
+            recipe = PRODUCTION_RECIPES.get(recipe_id)
+            label = recipe.name if recipe else recipe_id
+            self._log(
+                f"Auto-Betriebsausbau {city_name}: {label} L{level_before}->{building.level} fuer {cost} Mark."
+            )
+            upgrades += 1
+
+    def _auto_invest_macro_projects(self) -> None:
+        if self.player is None or self.player.turns_in_debt_tower > 0:
+            return
+
+        reserve = max(self._auto_player_reserve(), 22_000 + len(self.player.ships) * 700)
+
+        # 1) Stadtrettung priorisieren.
+        for city_name in CITIES:
+            city = self._city_economy(city_name)
+            city.bankrupt = 1 if city.treasury <= CITY_BANKRUPTCY_LIMIT else int(city.bankrupt)
+            if city.bankrupt != 1:
+                continue
+            bailout_cost = self._city_bailout_cost(city_name)
+            if self.player.money - bailout_cost < reserve:
+                continue
+            self.execute_city_bailout(self.player, city_name)
+
+        # 2) Sozialstiftung in schwachen Staedten.
+        social_cost = self._next_investment_cost(TRACK_SOCIAL)
+        weak_cities = sorted(
+            CITIES,
+            key=lambda city_name: (
+                self._city_economy(city_name).social_stability + self._city_economy(city_name).quality_of_life,
+                self._city_economy(city_name).population,
+            ),
+        )
+        for city_name in weak_cities[:2]:
+            if self.player.money - social_cost < reserve:
+                break
+            self.invest_in_social_welfare(self.player, city_name, social_cost)
+
+        # 3) Forschungs- und Infrastrukturspruenge fuer Langzeitdominanz.
+        research_cost = self._next_investment_cost(TRACK_RESEARCH)
+        if self.player.money - research_cost >= int(reserve * 1.15):
+            self.invest_in_research_resonance(self.player, research_cost)
+        infra_cost = self._next_investment_cost(TRACK_INFRASTRUCTURE)
+        if self.player.money - infra_cost >= int(reserve * 1.10):
+            self.invest_in_infrastructure(self.player, infra_cost)
+
+        # 4) Marktstabilisierung als Volatilitaetsdaempfer.
+        sophia_cost = self.research_manager.cost_for_level(TRACK_SOPHIA, self._investment_level(TRACK_SOPHIA))
+        if self.player.money - sophia_cost >= int(reserve * 1.25):
+            self.invest_in_algorithmic_harmony(self.player, sophia_cost)
+
     def _auto_play_month(self) -> None:
         if self.player is None or not self.player.alive:
             self.auto_mode = False
             return
+        self._auto_modernize_fleet()
         self._auto_build_ship_if_possible()
         harbor_indices = [idx for idx, ship in enumerate(self.player.ships) if not ship.is_at_sea]
         for idx in harbor_indices:
@@ -2381,6 +3401,8 @@ class PygameHanseApp:
                 continue
             target, plan, expected_profit = route
             self._auto_prepare_and_send_ship(ship, target, plan, expected_profit)
+        self._auto_invest_city_economy()
+        self._auto_invest_macro_projects()
         self._safe_advance_month("auto")
 
     def _auto_build_ship_if_possible(self) -> None:
@@ -2444,6 +3466,7 @@ class PygameHanseApp:
     def _auto_maintain_ship(self, ship: Ship) -> None:
         if self.player is None or ship.is_at_sea:
             return
+        self._auto_refresh_ship_weaponry(ship)
         reserve = self._auto_player_reserve()
         while ship.hull < AUTO_REPAIR_TARGET:
             amount = min(10, 100 - ship.hull)
@@ -2470,7 +3493,7 @@ class PygameHanseApp:
         while ship.cannons < cannon_target and bought < AUTO_MAX_CANNON_BUYS:
             if self.player.money - self._active_cannon_cost() < reserve:
                 break
-            self._buy_cannons(ship, 1)
+            self._buy_cannons(ship, 1, weapon_century=self.current_century)
             bought += 1
 
     def _auto_unload_ship(self, ship: Ship) -> int:
@@ -2999,6 +4022,7 @@ class PygameHanseApp:
         self.player.marriage_month = None
         self.player.children = 0
         self.player.child_names = []
+        self.player.child_ages = {}
         self.player.turns_in_debt_tower = 0
         self.marriage_popup_open = False
         self.marriage_candidate = ""
@@ -3402,19 +4426,95 @@ class PygameHanseApp:
         base = AUTO_CHILD_NAMES[len(self.player.child_names) % len(AUTO_CHILD_NAMES)]
         return self._unique_child_name(base)
 
+    def _current_max_children(self) -> int:
+        return max(1, int(max_children_for_year(self.current_year)))
+
+    def _child_survival_probability(self, city_name: str) -> float:
+        city = self._city_economy(city_name)
+        hospital_lvl = self._institution_level(city, "hospital")
+        doctor_lvl = self._institution_level(city, "doctors")
+        sanitation_lvl = self._institution_level(city, "sanitation")
+        medical_quality = self._clamp(
+            0.20
+            + (hospital_lvl * 0.09)
+            + (doctor_lvl * 0.13)
+            + (sanitation_lvl * 0.06)
+            + (float(city.hazard_mitigation) * 0.35)
+            + (float(city.child_survival_rate) * 0.35),
+            0.08,
+            1.35,
+        )
+        mortality = self._clamp(
+            child_mortality_for_year(self.current_year)
+            * (1.30 - medical_quality)
+            * (1.0 + float(city.disease_pressure) * 0.45),
+            0.01,
+            0.60,
+        )
+        return self._clamp(1.0 - mortality, 0.10, 0.995)
+
+    def _age_children_and_resolve_mortality(self) -> None:
+        if self.player is None or not self.player.child_names:
+            return
+        city_name = self.player.city if self.player.city in CITIES else CITIES[0]
+        survival_probability = self._child_survival_probability(city_name)
+        yearly_mortality = self._clamp(1.0 - survival_probability, 0.002, 0.30)
+        deceased: List[str] = []
+
+        for child_name in list(self.player.child_names):
+            try:
+                age = max(0, int(self.player.child_ages.get(child_name, 0))) + 1
+            except (TypeError, ValueError):
+                age = 1
+            self.player.child_ages[child_name] = age
+            if age <= CHILD_MORTALITY_VULNERABLE_AGE and self.rng.random() < yearly_mortality:
+                deceased.append(child_name)
+
+        if not deceased:
+            self.player.children = len(self.player.child_names)
+            return
+
+        for child_name in deceased:
+            if child_name in self.player.child_names:
+                self.player.child_names.remove(child_name)
+            self.player.child_ages.pop(child_name, None)
+            self.player.chronicle.append(
+                f"ANNO {self.current_year}: Kind {child_name} verstarb an Krankheit."
+            )
+        self.player.children = len(self.player.child_names)
+        if len(deceased) == 1:
+            self._log(f"Trauerfall: Kind {deceased[0]} verstarb an Krankheit.")
+        else:
+            self._log(f"Trauerfall: {len(deceased)} Kinder verstarben an Krankheiten.")
+
     def _register_child(self, name: str) -> bool:
         if self.player is None:
             return False
         clean = self._normalize_child_name(name)
         if len(clean) < 2:
             return False
+        if self.player.children >= self._current_max_children():
+            self._log(
+                f"Familienplanung: Im {self.current_century}. Jahrhundert sind maximal "
+                f"{self._current_max_children()} Kinder vorgesehen."
+            )
+            return False
         final_name = self._unique_child_name(clean)
-        self.player.child_names.append(final_name)
-        self.player.children = len(self.player.child_names)
-        self._log(f"Familie waechst: {final_name} wurde geboren.")
-        self.player.chronicle.append(
-            f"ANNO {self.current_year}: Kind geboren ({final_name})."
-        )
+        survival_probability = self._child_survival_probability(self.player.city)
+        self.player.chronicle.append(f"ANNO {self.current_year}: Geburt ({final_name}).")
+        if self.rng.random() <= survival_probability:
+            self.player.child_names.append(final_name)
+            self.player.child_ages[final_name] = 0
+            self.player.children = len(self.player.child_names)
+            self._log(f"Familie waechst: {final_name} wurde geboren.")
+            self.player.chronicle.append(
+                f"ANNO {self.current_year}: Kind geboren ({final_name})."
+            )
+        else:
+            self._log(f"Schicksalsschlag: Neugeborenes {final_name} verstarb an Krankheit.")
+            self.player.chronicle.append(
+                f"ANNO {self.current_year}: Neugeborenes {final_name} verstarb an Krankheit."
+            )
         return True
 
     def _submit_child_name(self, auto: bool = False) -> None:
@@ -3426,7 +4526,8 @@ class PygameHanseApp:
         if auto or len(proposed) < 2:
             proposed = self._next_auto_child_name()
         if not self._register_child(proposed):
-            self._log("Bitte einen gueltigen Namen eingeben.")
+            if len(proposed.strip()) < 2:
+                self._log("Bitte einen gueltigen Namen eingeben.")
             return
         self.child_name_popup_open = False
         self.child_name_edit = ""
@@ -3434,6 +4535,8 @@ class PygameHanseApp:
 
     def _trigger_child_birth_event(self) -> None:
         if self.player is None or not self.player.married:
+            return
+        if self.player.children >= self._current_max_children():
             return
         if self.auto_mode:
             self._register_child(self._next_auto_child_name())
@@ -3443,6 +4546,28 @@ class PygameHanseApp:
         self.child_name_popup_open = True
         self.child_name_edit = ""
         self._log("Ein Kind wurde geboren. Bitte den Namen im Popup vergeben.")
+
+    def _conceive_heir(self) -> None:
+        if self.player is None:
+            return
+        if not self.player.alive:
+            self._log("Kein Nachkomme moeglich: Handelshaus ist erloschen.")
+            return
+        if not self.player.married:
+            self._log("Nachkommen zeugen ist nur in einer Ehe moeglich.")
+            return
+        if self.player.children >= self._current_max_children():
+            self._log(
+                f"Familienplanung: Im {self.current_century}. Jahrhundert sind maximal "
+                f"{self._current_max_children()} Kinder vorgesehen."
+            )
+            return
+        if self.marriage_popup_open or self.child_name_popup_open:
+            self._log("Nachkommen zeugen derzeit nicht verfuegbar (offenes Familienereignis).")
+            return
+        heir_name = self._next_auto_child_name()
+        if self._register_child(heir_name):
+            self._log(f"Nachkommen gezeugt: {heir_name}.")
 
     def _maybe_trigger_marriage_proposal(self) -> None:
         if self.player is None or not self.player.alive:
@@ -3470,6 +4595,7 @@ class PygameHanseApp:
         self.player.marriage_month = None
         self.player.children = 0
         self.player.child_names = []
+        self.player.child_ages = {}
         self.player.turns_in_debt_tower = 0
         self.player.alive = True
         self.marriage_popup_open = False
@@ -3684,6 +4810,8 @@ class PygameHanseApp:
             f"Welt: Betriebe {self.last_world_tick.get('producing_buildings', 0)} | "
             f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)}/{len(self.npcs)} | "
             f"Bankrott {self.last_world_tick.get('cities_bankrupt', 0)} | "
+            f"Steuern {self._format_compact_number(self.last_world_tick.get('total_tax', 0))} | "
+            f"Migration {self._format_compact_number(self.last_world_tick.get('net_migration', 0))} | "
             f"Einfluss {self._player_city_influence(player.city):.1f}",
             self.font_small,
             TEXT_DIM,
@@ -3710,6 +4838,18 @@ class PygameHanseApp:
         fleet_can_scroll = self._fleet_max_scroll() > 0
         self._draw_button("game_fleet_up", pygame.Rect(fleet_panel.right - 78, 176, 34, 28), "^", fleet_can_scroll)
         self._draw_button("game_fleet_down", pygame.Rect(fleet_panel.right - 40, 176, 34, 28), "v", fleet_can_scroll)
+        can_conceive_heir = (
+            player.alive
+            and player.married
+            and not self.marriage_popup_open
+            and not self.child_name_popup_open
+        )
+        self._draw_button(
+            "game_heir",
+            pygame.Rect(log_panel.right - 540, log_panel.y + 6, 170, 36),
+            "Nachkommen zeugen",
+            can_conceive_heir,
+        )
         self._draw_button("game_export", pygame.Rect(log_panel.right - 362, log_panel.y + 6, 102, 36), "CSV Export", True)
         self._draw_button("game_info", pygame.Rect(log_panel.right - 252, log_panel.y + 6, 92, 36), "Info", True)
         self._draw_button("game_missions", pygame.Rect(log_panel.right - 150, log_panel.y + 6, 130, 36), "Missionen", True)
@@ -4171,7 +5311,7 @@ class PygameHanseApp:
         overlay.fill((8, 12, 20, 180))
         self.screen.blit(overlay, (0, 0))
 
-        panel = pygame.Rect(240, 120, 840, 560)
+        panel = pygame.Rect(170, 70, 980, 660)
         stripe = self._get_scaled("panel_stripe", (panel.width, panel.height))
         if stripe:
             self.screen.blit(stripe, (panel.x, panel.y))
@@ -4188,20 +5328,20 @@ class PygameHanseApp:
             f"{ship.display_name} ({ship.name}) | Ort: {ship.city}",
             self.font_small,
             TEXT_DIM,
-            (panel.x + 24, panel.y + 74),
+            (panel.x + 24, panel.y + 72),
         )
         self._draw_text(
             f"Rumpf {ship.hull}% / Takelage {ship.rigging}% | Kanonen {ship.cannons}",
             self.font_small,
             TEXT_DIM,
-            (panel.x + 24, panel.y + 100),
+            (panel.x + 24, panel.y + 98),
         )
         selected_weapon_century = self._normalize_selected_weapon_century()
         weapon = self._selected_weapon_profile()
         max_cannons = self._max_cannons(ship)
 
-        self._draw_text("Name:", self.font_small, TEXT, (panel.x + 24, panel.y + 130))
-        input_box = pygame.Rect(panel.x + 24, panel.y + 156, panel.width - 48, 44)
+        self._draw_text("Name:", self.font_small, TEXT, (panel.x + 24, panel.y + 124))
+        input_box = pygame.Rect(panel.x + 24, panel.y + 148, panel.width - 48, 44)
         self.ship_name_input_rect = input_box
         pygame.draw.rect(self.screen, BG_PANEL_ALT, input_box, border_radius=8)
         pygame.draw.rect(
@@ -4214,16 +5354,16 @@ class PygameHanseApp:
         display_name = self.ship_name_edit if self.ship_name_active else (ship.custom_name or ship.display_name)
         self._draw_text(display_name or "_", self.font, TEXT, (input_box.x + 10, input_box.y + 10))
 
-        self._draw_text("Kanonenstufe:", self.font_small, TEXT, (panel.x + 24, panel.y + 216))
-        selector_left = pygame.Rect(panel.x + 24, panel.y + 238, 34, 28)
-        selector_right = pygame.Rect(panel.x + panel.width - 58, panel.y + 238, 34, 28)
+        self._draw_text("Kanonenstufe:", self.font_small, TEXT, (panel.x + 24, panel.y + 206))
+        selector_left = pygame.Rect(panel.x + 24, panel.y + 230, 34, 28)
+        selector_right = pygame.Rect(panel.x + panel.width - 58, panel.y + 230, 34, 28)
         self._draw_button("editor_weapon_prev", selector_left, "<", selected_weapon_century > 14)
         self._draw_button("editor_weapon_next", selector_right, ">", selected_weapon_century < self.current_century)
         self._draw_text(
             f"C{selected_weapon_century}: {weapon.get('name', 'Standard')}",
             self.font,
             ACCENT_2,
-            (panel.x + 72, panel.y + 240),
+            (panel.x + 72, panel.y + 232),
         )
         self._draw_text(
             (
@@ -4232,12 +5372,27 @@ class PygameHanseApp:
             ),
             self.font_small,
             TEXT_DIM,
-            (panel.x + 72, panel.y + 268),
+            (panel.x + 72, panel.y + 260),
         )
 
         available_centuries = self._available_weapon_centuries()
         selected_idx = available_centuries.index(selected_weapon_century)
-        visible_count = self._editor_weapon_visible_count()
+
+        buttons_y = panel.bottom - 52
+        footer_rect = pygame.Rect(panel.x + 24, buttons_y - 66, panel.width - 48, 56)
+        list_top = panel.y + 280
+        list_bottom = footer_rect.y - 10
+        list_height = max(110, list_bottom - list_top)
+        list_rect = pygame.Rect(panel.x + 24, list_top, panel.width - 48, list_height)
+        self.editor_weapon_list_rect = list_rect
+        pygame.draw.rect(self.screen, BG_PANEL_ALT, list_rect, border_radius=8)
+        pygame.draw.rect(self.screen, (60, 85, 122), list_rect, width=1, border_radius=8)
+
+        row_height = 32
+        row_step = row_height + 4
+        rows_fit = max(1, (list_rect.height - 16) // row_step)
+        visible_count = max(1, min(rows_fit, len(available_centuries)))
+        self.editor_weapon_visible_cache = visible_count
         max_offset = max(0, len(available_centuries) - visible_count)
         self.editor_weapon_offset = max(0, min(max_offset, int(self.editor_weapon_offset)))
         if selected_idx < self.editor_weapon_offset:
@@ -4245,13 +5400,6 @@ class PygameHanseApp:
         if selected_idx >= self.editor_weapon_offset + visible_count:
             self.editor_weapon_offset = selected_idx - visible_count + 1
 
-        footer_rect = pygame.Rect(panel.x + 24, panel.bottom - 130, panel.width - 48, 58)
-        list_top = panel.y + 300
-        list_height = max(120, footer_rect.y - list_top - 10)
-        list_rect = pygame.Rect(panel.x + 24, list_top, panel.width - 48, list_height)
-        self.editor_weapon_list_rect = list_rect
-        pygame.draw.rect(self.screen, BG_PANEL_ALT, list_rect, border_radius=8)
-        pygame.draw.rect(self.screen, (60, 85, 122), list_rect, width=1, border_radius=8)
         self._draw_button(
             "editor_tier_up",
             pygame.Rect(list_rect.right - 34, list_rect.y + 6, 24, 24),
@@ -4267,10 +5415,14 @@ class PygameHanseApp:
 
         self.editor_weapon_rows = []
         y = list_rect.y + 8
-        row_height = 32
         visible_centuries = available_centuries[self.editor_weapon_offset : self.editor_weapon_offset + visible_count]
         inventory = getattr(ship, "cannon_inventory", {})
+        list_content_rect = pygame.Rect(list_rect.x + 8, list_rect.y + 8, list_rect.width - 50, list_rect.height - 16)
+        prev_clip = self.screen.get_clip()
+        self.screen.set_clip(list_content_rect)
         for century_i in visible_centuries:
+            if y + row_height > list_content_rect.bottom:
+                break
             row = pygame.Rect(list_rect.x + 8, y, list_rect.width - 50, row_height)
             is_selected = century_i == selected_weapon_century
             pygame.draw.rect(self.screen, ROW_SELECTED if is_selected else BG_PANEL, row, border_radius=6)
@@ -4285,13 +5437,14 @@ class PygameHanseApp:
                 f"x{float(profile.get('cannon_power', 1.0)):.2f}"
             )
             self._draw_text(
-                self._shorten_text(row_text, 92),
+                self._shorten_text(row_text, 84),
                 self.font_small,
                 ACCENT_2 if is_selected else TEXT_DIM,
                 (row.x + 8, row.y + 8),
             )
             self.editor_weapon_rows.append((century_i, row))
-            y += row_height + 4
+            y += row_step
+        self.screen.set_clip(prev_clip)
 
         if len(available_centuries) > visible_count:
             start = self.editor_weapon_offset + 1
@@ -4346,26 +5499,26 @@ class PygameHanseApp:
                 )
         self._draw_button(
             "editor_cannon_1",
-            pygame.Rect(panel.x + 24, panel.y + panel.height - 58, 150, 40),
+            pygame.Rect(panel.x + 24, buttons_y, 150, 40),
             f"+1 ({cannon_cost_1})",
             buy_1 > 0 and self.player.money >= cannon_cost_1,
         )
         self._draw_button(
             "editor_cannon_5",
-            pygame.Rect(panel.x + 184, panel.y + panel.height - 58, 150, 40),
+            pygame.Rect(panel.x + 184, buttons_y, 150, 40),
             f"+{buy_5} ({cannon_cost_5})",
             buy_5 > 0 and self.player.money >= cannon_cost_5,
         )
         self._draw_button(
             "editor_save",
-            pygame.Rect(panel.x + panel.width - 252, panel.y + panel.height - 58, 120, 40),
+            pygame.Rect(panel.x + panel.width - 252, buttons_y, 120, 40),
             "Speichern",
             True,
             accent=True,
         )
         self._draw_button(
             "editor_close",
-            pygame.Rect(panel.x + panel.width - 122, panel.y + panel.height - 58, 98, 40),
+            pygame.Rect(panel.x + panel.width - 122, buttons_y, 98, 40),
             "Schliessen",
             True,
         )
@@ -4418,6 +5571,16 @@ class PygameHanseApp:
             BAD if city_status == "BANKROTT" else TEXT_DIM,
             (prices_x, prices_y - 46),
         )
+        self._draw_text(
+            (
+                f"Bev. {city_economy.population} | Stabil {city_economy.social_stability:.1f} | "
+                f"Lebensqualitaet {city_economy.quality_of_life:.1f} | Migration {city_economy.migration:+d} | "
+                f"Krankheitsdruck {city_economy.disease_pressure:.2f}"
+            ),
+            self.font_small,
+            TEXT_DIM,
+            (prices_x, prices_y - 68),
+        )
         for good_name in visible_goods:
             row = pygame.Rect(prices_x, prices_y, prices_w, 36)
             pygame.draw.rect(self.screen, BG_PANEL_ALT, row, border_radius=6)
@@ -4444,11 +5607,15 @@ class PygameHanseApp:
         if not self.selected_city_building_recipe and city_economy.buildings:
             self.selected_city_building_recipe = city_economy.buildings[0].id
         by = panel.y + 94
+        building_row_height = 82
+        building_list_bottom = panel.y + panel.height - 118
         for building in city_economy.buildings:
+            if by + building_row_height > building_list_bottom:
+                break
             recipe = PRODUCTION_RECIPES.get(building.id)
             if recipe is None:
                 continue
-            row = pygame.Rect(buildings_x, by, buildings_w, 82)
+            row = pygame.Rect(buildings_x, by, buildings_w, building_row_height)
             selected_building = building.id == self.selected_city_building_recipe
             row_color = ROW_SELECTED if selected_building else BG_PANEL_ALT
             pygame.draw.rect(self.screen, row_color, row, border_radius=6)
@@ -4520,27 +5687,67 @@ class PygameHanseApp:
             )
             self.city_building_rows.append((building.id, row))
             by += 86
-            if by > panel.bottom - 90:
-                break
 
         selected_building = next(
             (entry for entry in city_economy.buildings if entry.id == self.selected_city_building_recipe),
             None,
         )
         can_buy_share = selected_building is not None
+        social_next = self._next_investment_cost(TRACK_SOCIAL)
+        research_next = self._next_investment_cost(TRACK_RESEARCH)
+        infra_next = self._next_investment_cost(TRACK_INFRASTRUCTURE)
+        sophia_next = self.research_manager.cost_for_level(TRACK_SOPHIA, self._investment_level(TRACK_SOPHIA))
+        bailout_cost = self._city_bailout_cost(selected_city)
+        row_top_y = panel.y + panel.height - 104
+        row_bottom_y = panel.y + panel.height - 58
         self._draw_button(
             "city_market_buy_share",
-            pygame.Rect(panel.x + panel.width - 300, panel.y + panel.height - 58, 145, 40),
+            pygame.Rect(panel.x + 24, row_bottom_y, 132, 40),
             "+5% Anteil",
             can_buy_share,
         )
         self._draw_button(
+            "city_market_social",
+            pygame.Rect(panel.x + 166, row_bottom_y, 132, 40),
+            "Stiftung",
+            self.player is not None and self.player.money >= social_next,
+        )
+        self._draw_button(
+            "city_market_research",
+            pygame.Rect(panel.x + 308, row_bottom_y, 132, 40),
+            "Forschung",
+            self.player is not None and self.player.money >= research_next,
+        )
+        self._draw_button(
+            "city_market_infra",
+            pygame.Rect(panel.x + 450, row_bottom_y, 132, 40),
+            "Reisezeit",
+            self.player is not None and self.player.money >= infra_next,
+        )
+        self._draw_button(
+            "city_market_sophia",
+            pygame.Rect(panel.x + 592, row_bottom_y, 132, 40),
+            "Preisstab.",
+            self.player is not None and self.player.money >= sophia_next,
+        )
+        self._draw_button(
             "city_market_bailout",
-            pygame.Rect(panel.x + panel.width - 452, panel.y + panel.height - 58, 145, 40),
-            "Rettung 1000",
-            self.player is not None
-            and self.player.money >= BAILOUT_MIN_AMOUNT
-            and self._player_city_influence(selected_city) >= MIN_BAILOUT_INFLUENCE,
+            pygame.Rect(panel.x + 734, row_bottom_y, 132, 40),
+            "Stadt retten",
+            self.player is not None and self._city_is_bankrupt(selected_city) and self.player.money >= bailout_cost,
+            accent=True,
+        )
+        self._draw_text(
+            f"Kosten: Stiftung {social_next} | Forschung {research_next} | Reisezeit {infra_next} | Preisstabil. {sophia_next}",
+            self.font_small,
+            TEXT_DIM,
+            (panel.x + 24, row_top_y + 8),
+        )
+        self._draw_text(
+            f"Bailout {selected_city}: {bailout_cost} Mark | Monumente {city_economy.monuments.get(CITY_BAILOUT_MONUMENT_KEY, 0)}",
+            self.font_small,
+            ACCENT_2 if self._city_is_bankrupt(selected_city) else TEXT_DIM,
+            (panel.x + 24, row_top_y + 30),
         )
         self._draw_button(
             "city_market_close",
@@ -4566,9 +5773,23 @@ class PygameHanseApp:
             selected_city = CITIES[self.selected_city_market]
             if self.selected_city_building_recipe:
                 self._buy_city_building_shares(selected_city, self.selected_city_building_recipe, pct=5)
+        elif button == "city_market_social":
+            selected_city = CITIES[self.selected_city_market]
+            if self.player is not None:
+                self.invest_in_social_welfare(self.player, selected_city, self._next_investment_cost(TRACK_SOCIAL))
+        elif button == "city_market_research":
+            if self.player is not None:
+                self.invest_in_research_resonance(self.player, self._next_investment_cost(TRACK_RESEARCH))
+        elif button == "city_market_infra":
+            if self.player is not None:
+                self.invest_in_infrastructure(self.player, self._next_investment_cost(TRACK_INFRASTRUCTURE))
+        elif button == "city_market_sophia":
+            if self.player is not None:
+                next_cost = self.research_manager.cost_for_level(TRACK_SOPHIA, self._investment_level(TRACK_SOPHIA))
+                self.invest_in_algorithmic_harmony(self.player, next_cost)
         elif button == "city_market_bailout":
             selected_city = CITIES[self.selected_city_market]
-            self._bailout_city(selected_city, amount=1000)
+            self._bailout_city(selected_city, amount=self._city_bailout_cost(selected_city))
 
     def _draw_missions(self) -> None:
         if self.player is None:
@@ -4847,7 +6068,13 @@ class PygameHanseApp:
         y_left += gap
         draw_line(f"Ehepartner: {spouse}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
-        draw_line(f"Kinder ({player.children}): {children}", self.font_small, TEXT_DIM, left_x, y_left)
+        draw_line(
+            f"Kinder ({player.children}/{self._current_max_children()}): {children}",
+            self.font_small,
+            TEXT_DIM,
+            left_x,
+            y_left,
+        )
         y_left += gap
         draw_line(f"Aktueller Ort: {player.city}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
@@ -4867,6 +6094,42 @@ class PygameHanseApp:
         draw_line(f"Naechster Titel: {next_title}", self.font_small, TEXT_DIM, left_x, y_left)
         y_left += gap
         draw_line(f"Fehlender Wert: {next_gap}", self.font_small, TEXT_DIM, left_x, y_left)
+        y_left += gap + 2
+        social_level = self._investment_level(TRACK_SOCIAL)
+        research_level = self._investment_level(TRACK_RESEARCH)
+        infra_level = self._investment_level(TRACK_INFRASTRUCTURE)
+        sophia_level = self._investment_level(TRACK_SOPHIA)
+        draw_line(
+            f"Stiftung: L{social_level} ({int(self._investment_spend_total(TRACK_SOCIAL))} Mark)",
+            self.font_small,
+            TEXT_DIM,
+            left_x,
+            y_left,
+        )
+        y_left += gap
+        draw_line(
+            f"Forschung: L{research_level} | Input-Reduktion {self.research_manager.efficiency_reduction(research_level) * 100:.1f}%",
+            self.font_small,
+            TEXT_DIM,
+            left_x,
+            y_left,
+        )
+        y_left += gap
+        draw_line(
+            f"Infrastruktur: L{infra_level} | Reisefaktor {self.research_manager.travel_time_multiplier(infra_level, self.current_year):.2f}",
+            self.font_small,
+            TEXT_DIM,
+            left_x,
+            y_left,
+        )
+        y_left += gap
+        draw_line(
+            f"Marktstabilisierung: L{sophia_level} | Dampfungswert {self.global_loss_value:.2f}",
+            self.font_small,
+            TEXT_DIM,
+            left_x,
+            y_left,
+        )
 
         ships_total = len(player.ships)
         ships_at_sea = sum(1 for ship in player.ships if ship.is_at_sea)
@@ -5252,6 +6515,9 @@ class PygameHanseApp:
             goods=self._active_goods().keys(),
             cities=CITIES,
         )
+        if self.global_loss_value > 0:
+            damped_price = 1.0 + (self.economy_state.global_price_level - 1.0) * (1.0 - self.global_loss_value * 0.55)
+            self.economy_state.global_price_level = self._clamp(damped_price, 0.60, 2.20)
         self._ensure_world_state()
         self.market_cache.clear()
 
@@ -5265,6 +6531,10 @@ class PygameHanseApp:
         self.current_month = STARTING_MONTH
         self.current_century = year_to_century(self.current_year)
         self._ensure_world_state(reset_world=True, reset_npcs=True)
+        self.sophia_spend_total = 0.0
+        self.global_loss_value = 0.0
+        global global_loss_value
+        global_loss_value = 0.0
         city = CITIES[self.new_city]
         goods = self._active_good_names()
         ship = Ship(city=city, cargo={good: 0 for good in goods})
@@ -5328,7 +6598,10 @@ class PygameHanseApp:
         self._log(
             f"Weltmarkt: Produktion {self.last_world_tick.get('producing_buildings', 0)} Betriebe | "
             f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)} | "
-            f"Bankrott-Staedte {self.last_world_tick.get('cities_bankrupt', 0)}."
+            f"Bankrott-Staedte {self.last_world_tick.get('cities_bankrupt', 0)} | "
+            f"Steuern {self._format_compact_number(self.last_world_tick.get('total_tax', 0))} | "
+            f"Migration {self._format_compact_number(self.last_world_tick.get('net_migration', 0))} | "
+            f"Krankheitsfaelle {self._format_compact_number(self.last_world_tick.get('disease_cases', 0))}."
         )
         self.scene = "game"
 
@@ -5376,6 +6649,9 @@ class PygameHanseApp:
             "atheria_economy_state": self.economy_state.to_dict(),
             "world_economy": self.world_economy.to_dict(),
             "npcs": [npc.to_dict() for npc in self.npcs],
+            "last_world_tick": dict(self.last_world_tick),
+            "sophia_spend_total": float(self.sophia_spend_total),
+            "global_loss_value": float(self.global_loss_value),
         }
         try:
             path = self._slot_path(slot)
@@ -5431,6 +6707,37 @@ class PygameHanseApp:
                 self.npcs = [NPCTrader.from_dict(entry) for entry in npcs_data if isinstance(entry, dict)]
             else:
                 self.npcs = []
+            try:
+                self.sophia_spend_total = max(0.0, float(raw.get("sophia_spend_total", 0.0)))
+            except (TypeError, ValueError):
+                self.sophia_spend_total = 0.0
+            try:
+                self.global_loss_value = max(0.0, min(0.85, float(raw.get("global_loss_value", 0.0))))
+            except (TypeError, ValueError):
+                self.global_loss_value = 0.0
+            global global_loss_value
+            global_loss_value = self.global_loss_value
+            tick_data = raw.get("last_world_tick", {})
+            if isinstance(tick_data, dict):
+                self.last_world_tick = {
+                    "producing_buildings": int(tick_data.get("producing_buildings", 0)),
+                    "npc_trades": int(tick_data.get("npc_trades", 0)),
+                    "cities_bankrupt": int(tick_data.get("cities_bankrupt", 0)),
+                    "total_tax": max(0, min(9_999_999_999, int(tick_data.get("total_tax", 0)))),
+                    "net_migration": max(-999_999_999, min(999_999_999, int(tick_data.get("net_migration", 0)))),
+                    "disease_cases": max(0, min(9_999_999, int(tick_data.get("disease_cases", 0)))),
+                    "disease_deaths": max(0, min(9_999_999, int(tick_data.get("disease_deaths", 0)))),
+                }
+            else:
+                self.last_world_tick = {
+                    "producing_buildings": 0,
+                    "npc_trades": 0,
+                    "cities_bankrupt": 0,
+                    "total_tax": 0,
+                    "net_migration": 0,
+                    "disease_cases": 0,
+                    "disease_deaths": 0,
+                }
             self._ensure_world_state(
                 reset_world=not isinstance(world_data, dict),
                 reset_npcs=not isinstance(npcs_data, list),
@@ -5470,7 +6777,6 @@ class PygameHanseApp:
             self.auto_popup_hold_until = 0
             self.auto_last_ship_build_month = -9999
             self.time_limit_reached = False
-            self.last_world_tick = {"producing_buildings": 0, "npc_trades": 0, "cities_bankrupt": 0}
             self.last_dividend_pools = {}
             self._sync_century_content(announce=False)
             self._init_missions()
@@ -5490,13 +6796,15 @@ class PygameHanseApp:
         sea_factor = SEA_FACTORS[self.current_sea_state]
         city_macro = self.economy_state.city_factor(city)
         city_economy = self._city_economy(city)
-        global_price_level = self.economy_state.global_price_level
+        loss_damping = self._clamp(float(self.global_loss_value), 0.0, 0.85)
+        global_price_level = 1.0 + (self.economy_state.global_price_level - 1.0) * (1.0 - loss_damping * 0.75)
         bankruptcy_factor = 1.10 if self._city_is_bankrupt(city) else 1.0
         prices: Dict[str, int] = {}
         for good_name, params in self._active_goods().items():
             base = params["base_price"]
             volatility = params["volatility"]
-            drift = self.rng.uniform(-volatility, volatility)
+            damped_volatility = max(0.02, volatility * (1.0 - loss_damping * 0.82))
+            drift = self.rng.uniform(-damped_volatility, damped_volatility)
             good_macro = self.economy_state.good_factor(good_name)
             stock_factor = city_economy.scarcity_factor(good_name)
             price = int(
@@ -5621,7 +6929,7 @@ class PygameHanseApp:
         self.player.money -= travel_cost
         ship.is_at_sea = True
         ship.destination = target
-        ship.travel_turns_left = max(1, distance)
+        ship.travel_turns_left = self._travel_turns_for_distance(distance)
         ship.last_report = f"Ausgelaufen nach {target}, ETA {ship.travel_turns_left} Monat(e)."
         target_prices = self._market_prices(target)
         ship.locked_prices = {}
@@ -5647,6 +6955,14 @@ class PygameHanseApp:
             "stille See": 0.08,
         }
         risk = risk_map[self.current_sea_state]
+        origin_city = self._city_economy(origin)
+        target_city = self._city_economy(target)
+        mitigation = self._clamp(
+            (float(origin_city.hazard_mitigation) + float(target_city.hazard_mitigation)) / 2.0,
+            0.0,
+            0.85,
+        )
+        risk = max(0.02, risk * (1.0 - mitigation))
         events: list[str] = []
         if self.rng.random() < risk:
             hull_damage = self.rng.randint(5, 18)
@@ -5660,7 +6976,7 @@ class PygameHanseApp:
             )
         cannon_power = self._ship_cannon_power(ship)
         effective_cannons = ship.cannons * cannon_power
-        pirate_chance = risk / (1 + effective_cannons * 0.5)
+        pirate_chance = (risk / (1 + effective_cannons * 0.5)) * (1.0 - mitigation * 0.75)
         if self.rng.random() < pirate_chance:
             goods = [good for good, qty in ship.cargo.items() if qty > 0]
             if goods:
@@ -5743,6 +7059,13 @@ class PygameHanseApp:
             self.player.chronicle.append(f"ANNO {self.current_year}: Schuldturm ({MONTHS[self.current_month - 1]}).")
 
         self._apply_passive_income()
+        monument_multiplier = self._player_monument_reputation_multiplier()
+        if monument_multiplier > 1.0:
+            reputation_gain = max(1, int(round(CITY_MONUMENT_REPUTATION_BASE * monument_multiplier)))
+            self.player.reputation = min(200, self.player.reputation + reputation_gain)
+            self.player.chronicle.append(
+                f"ANNO {self.current_year}: Stifter-Monumente steigern den Ruf (+{reputation_gain}, {MONTHS[self.current_month - 1]})."
+            )
 
         heuer_factor = max(0.75, min(1.45, 0.88 + (price_level - 1.0) * 0.35))
         total_capacity = sum(ship.cargo_capacity for ship in self.player.ships)
@@ -5807,7 +7130,10 @@ class PygameHanseApp:
         self._log(
             f"Weltmarkt: Produktion {self.last_world_tick.get('producing_buildings', 0)} Betriebe | "
             f"NPC-Deals {self.last_world_tick.get('npc_trades', 0)} | "
-            f"Bankrott-Staedte {self.last_world_tick.get('cities_bankrupt', 0)}."
+            f"Bankrott-Staedte {self.last_world_tick.get('cities_bankrupt', 0)} | "
+            f"Steuern {self._format_compact_number(self.last_world_tick.get('total_tax', 0))} | "
+            f"Migration {self._format_compact_number(self.last_world_tick.get('net_migration', 0))} | "
+            f"Krankheitsfaelle {self._format_compact_number(self.last_world_tick.get('disease_cases', 0))}."
         )
 
     def _resolve_fleet_travel(self) -> None:
@@ -5879,6 +7205,8 @@ class PygameHanseApp:
         if self.player is None or not self.player.alive:
             return
 
+        self._age_children_and_resolve_mortality()
+
         if self.player.age > 60:
             death_chance = min(0.42, (self.player.age - 60) * 0.025)
             if self.rng.random() < death_chance:
@@ -5895,7 +7223,14 @@ class PygameHanseApp:
             marriage_year = self.player.marriage_year if self.player.marriage_year is not None else self.current_year - 1
             marriage_month = self.player.marriage_month if self.player.marriage_month is not None else self.current_month
             months_married = (self.current_year - marriage_year) * 12 + (self.current_month - marriage_month)
-            if months_married >= 12 and self.rng.random() < 0.30:
+            if self.player.children >= self._current_max_children():
+                return
+            city = self._city_economy(self.player.city if self.player.city in CITIES else CITIES[0])
+            base_birth_chance = birth_chance_for_year(self.current_year)
+            age_penalty = self._clamp(1.0 - max(0, self.player.age - 35) * 0.02, 0.45, 1.0)
+            support_factor = self._clamp(0.72 + float(city.child_survival_rate) * 0.42, 0.55, 1.16)
+            birth_chance = self._clamp(base_birth_chance * age_penalty * support_factor, 0.02, 0.56)
+            if months_married >= 12 and self.rng.random() < birth_chance:
                 self._trigger_child_birth_event()
 
     def _update_title(self) -> None:
@@ -5946,5 +7281,49 @@ class PygameHanseApp:
 
 
 def run_pygame_game() -> int:
-    app = PygameHanseApp()
+    try:
+        app = PygameHanseApp()
+    except Exception as exc:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        details = traceback.format_exc()
+        log_entry = (
+            f"[{timestamp}] Boot-Fehler: {type(exc).__name__}: {exc}\n"
+            f"{details}\n"
+        )
+        log_targets: List[Path] = []
+        try:
+            save_dir = Path(__file__).with_name(SAVE_DIR)
+            save_dir.mkdir(parents=True, exist_ok=True)
+            log_targets.append(save_dir / "boot_error.log")
+        except OSError:
+            pass
+        if ("ANDROID_ARGUMENT" in os.environ) or (sys.platform == "android"):
+            env_download = os.getenv("DOWNLOAD_DIR", "").strip()
+            external_storage = os.getenv("EXTERNAL_STORAGE", "").strip()
+            candidates = []
+            if env_download:
+                candidates.append(Path(env_download))
+            if external_storage:
+                candidates.append(Path(external_storage) / "Download")
+            candidates.extend(
+                [
+                    Path("/storage/emulated/0/Download"),
+                    Path("/storage/self/primary/Download"),
+                    Path("/sdcard/Download"),
+                ]
+            )
+            for candidate in candidates:
+                try:
+                    candidate.mkdir(parents=True, exist_ok=True)
+                    log_targets.append(candidate / "hanse_boot_error.log")
+                    break
+                except OSError:
+                    continue
+        for target in log_targets:
+            try:
+                with target.open("a", encoding="utf-8") as handle:
+                    handle.write(log_entry)
+            except OSError:
+                continue
+        return 1
     return app.run()

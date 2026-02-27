@@ -186,9 +186,9 @@
 <h1>HANSE: ATHERIA EDITION - Spielhandbuch</h1>
 <p><img src="images/bg_main.webp" alt="Titelbild"></p>
 <p><img src="images/ship_kogge.webp" alt="Logo"></p>
-<h2>0) Patchnotes (Stand 2026-02-25)</h2>
-<p><strong>Patch-ID:</strong> <code>P-2026-02-25</code><br>
-<strong>Dokustand:</strong> <code>2026-02-25</code><br>
+<h2>0) Patchnotes (Stand 2026-02-27)</h2>
+<p><strong>Patch-ID:</strong> <code>P-2026-02-27</code><br>
+<strong>Dokustand:</strong> <code>2026-02-27</code><br>
 <strong>Save-Version:</strong> <code>2</code> (Legacy-Saves ohne Weltwirtschaftsdaten bleiben ladefaehig)</p>
 <p>Enthaltene Erweiterungen:</p>
 <ul>
@@ -199,6 +199,23 @@
 <li><strong>Jahrhundertwechsel/Freischaltungen:</strong> Neue Waren, Schiffstypen, Titelstufen und Waffenprofile werden automatisch aktiv.</li>
 <li><strong>Auto-Aufwertung im Auto-Modus:</strong> Neue Gueter werden automatisch gehandelt; neue Schiffe/Kanonen gemaess aktueller Jahrhundert-Technik genutzt.</li>
 <li><strong>Flottenmodernisierung:</strong> Schiffe koennen im Hafen verkauft werden, um auf neue Jahrhundertmodelle umzusteigen.</li>
+<li><strong>Mehr Quests:</strong> Acht parallele Langzeitmissionen statt nur der vier Basisziele.</li>
+<li><strong>Betriebsinspektion:</strong> Weltwirtschafts-Menue (CLI) und Stadtmarktansicht (pygame) zeigen Betriebsdetails je Stadt.</li>
+<li><strong>CSV-Export:</strong> Voller Wirtschafts- und Spielerreport fuer Excel-Auswertung.</li>
+<li><strong>Beteiligungsmarkt:</strong> Spieler kann Anteile an staedtischen Betrieben kaufen und passive Rendite erhalten.</li>
+<li><strong>Politischer Einfluss &amp; Stadtrettung:</strong> Einfluss pro Stadt steigt durch Investitionen; Rettungsfonds koennen bankrotte Staedte stabilisieren.</li>
+<li><strong>Urbanes Zivilisationsmodell:</strong> Jede Stadt simuliert Bevoelkerung, Klassen, Institutionen, Infrastruktur, Steuerkraft, Migration, Stabilitaet und Lebensqualitaet.</li>
+<li><strong>Jahrhundert-Adaption der Staedte:</strong> Institutionen und Infrastruktur wachsen stufenweise mit dem Jahrhundert und erzeugen unterschiedliche Metropolen-Profile.</li>
+<li><strong>Stiftungs-System:</strong> Investitionen in Akademien/Spitaeler senken lokal dauerhaft Knappheitsdruck und reduzieren Sturm-/Piratenrisiken in diesen Gewaessern.</li>
+<li><strong>City Bailout 2.0:</strong> Bei Bankrott kann die Stadt vollstaendig gerettet werden; ein Stifter-Monument erhoeht Rufzuwachs und verdoppelt Lagerkapazitaet.</li>
+<li><strong>Betriebsforschung:</strong> Forschungsgelder senken den Inputbedarf der Betriebe bei gleichem Output.</li>
+<li><strong>Reise-Infrastruktur:</strong> Investitionen (ab Jahr 2000+) verkuerzen Reisezeiten gemaess Infrastrukturlevel.</li>
+<li><strong>Marktstabilisierung:</strong> Investitionen daempfen Preisspruenge und machen Maerkte berechenbarer.</li>
+<li><strong>Steueranzeige verbessert:</strong> Steuer-/Migrationswerte werden kompakt (<code>K/M/B/T</code>) angezeigt und beim Laden auf sichere Grenzen begrenzt.</li>
+<li><strong>Auto-Modus Handelssicherheit:</strong> Die KI priorisiert wieder aktiven Warenhandel (Beladen/Versand) und ersetzt Schiffe nur noch mit ausreichender Reserve.</li>
+<li><strong>UI-Lesbarkeit verbessert:</strong> Schiff-Editor-Kanonenliste scrollbar, Betriebsinfos im Stadtpreise-Fenster entzerrt, Spielerinfo scrollbar.</li>
+<li><strong>Krankheitsdynamik:</strong> Staedte simulieren Krankheitsdruck, Krankheitsfaelle und medizinische Versorgung (Krankenhaeuser/Aerzte).</li>
+<li><strong>Demografie je Jahrhundert:</strong> Geburtenrate und Kindersterblichkeit folgen dem Jahrhundert; in der industriellen/modernen Welt liegt das Familienlimit bei maximal 3 Kindern.</li>
 </ul>
 <h2>1) Titelblatt &amp; Basisdaten</h2>
 <table>
@@ -325,6 +342,10 @@ Loesung: Spiel laeuft im Fallback-Modell weiter; optional <code>HP_GAME_ATHERIA_
 <td>Slot laden</td>
 <td><code>F9</code></td>
 </tr>
+<tr>
+<td>CSV-Report exportieren (pygame)</td>
+<td><code>F6</code></td>
+</tr>
 </tbody>
 </table>
 <h3>Texteingabe</h3>
@@ -408,6 +429,37 @@ Loesung: Spiel laeuft im Fallback-Modell weiter; optional <code>HP_GAME_ATHERIA_
 <li>Bei fehlenden Inputs pausiert das Gebaeude in diesem Monat</li>
 </ol>
 <p>Ergaenzend gibt es einen kleinen Grundverbrauch fuer Basiswaren (<code>Getreide</code>, <code>Salz</code>, <code>Hering</code>), damit Maerkte dauerhaft in Bewegung bleiben. Startbetriebe sind z. B. Brauerei in Luebeck (inkl. <code>Bier</code>), Holzfaeller in Bergen und Salzminen in Riga/Novgorod.</p>
+<p>Aktive Standardrezepte:</p>
+<ul>
+<li><strong>Brauerei:</strong> Getreide + Holz -&gt; Bier</li>
+<li><strong>Salzmine:</strong> -&gt; Salz</li>
+<li><strong>Holzfaeller:</strong> -&gt; Holz</li>
+<li><strong>Fischerei:</strong> -&gt; Hering</li>
+<li><strong>Getreidehof:</strong> -&gt; Getreide</li>
+<li><strong>Weinkellerei:</strong> Getreide -&gt; Wein</li>
+<li><strong>Weberei:</strong> Holz -&gt; Tuch</li>
+<li><strong>Gerberei:</strong> Salz -&gt; Pelze</li>
+</ul>
+<p>Jahrhundert-Freischaltungen (zusätzliche Betriebe):</p>
+<ul>
+<li><strong>15. Jh.:</strong> Hopfenplantage, Teerbrennerei, Grossbrauerei</li>
+<li><strong>16. Jh.:</strong> Gewuerzhandel, Kupfermine, Gewuerzraffinerie</li>
+<li><strong>17. Jh.:</strong> Tabakplantage, Zuckerplantage, Zuckerraffinerie</li>
+<li><strong>18. Jh.:</strong> Kaffeeplantage, Baumwollfarm, Textilmanufaktur</li>
+<li><strong>19. Jh.:</strong> Kohlemine, Stahlwerk, Raffinerie</li>
+<li><strong>20. Jh.:</strong> Elektronikfabrik</li>
+<li><strong>21. Jh.:</strong> Seltene Erden Mine, Chipfabrik</li>
+</ul>
+<p>Jede Stadt startet deterministisch mit <strong>mindestens vier Betrieben</strong>, Kernstaedte mit hoeheren Levels.</p>
+<h3>5.1.2 Krankheiten, Krankenhaeuser und Aerzte</h3>
+<ul>
+<li>Jede Stadt berechnet monatlich einen <strong>Krankheitsdruck</strong> aus Jahrhundert, Versorgungslage und Stabilitaet.</li>
+<li><strong>Krankenhaeuser</strong> und <strong>Aerzte</strong> senken den Krankheitsdruck, verbessern die Kinder-Ueberlebensrate und stabilisieren Wachstum/Steuerkraft.</li>
+<li>Mit zunehmenden Jahrhunderten sinken Krankheitsdruck und Kindersterblichkeit deutlich.</li>
+<li>Demografieregel: Im industriellen/modernen Zeitalter (ab <code>19. Jahrhundert</code>) liegt das Familienlimit bei <strong>maximal 3 Kindern</strong>.</li>
+<li>In fruehen Jahrhunderten sind groessere Familien moeglich, aber Krankheitsereignisse koennen Kinderverluste verursachen.</li>
+</ul>
+
 <h3>5.2 Markt- und Preisbildung</h3>
 <p>Die Preise werden pro Stadt, Ware und Monat dynamisch berechnet. Die Kernformel lautet:</p>
 <p><code>Preis = Basispreis * Stadt-Bias * See-Faktor * (1 + Drift) * Globales Preisniveau * Stadt-Faktor * Waren-Faktor * Inventory-Faktor</code></p>
@@ -508,6 +560,11 @@ Wenn ein Schiff mit Ladung auslaeuft, werden Zielortpreise je Ware als gebundene
 <li><strong>Architekt der Synergie</strong>: Flottenkomposition + Zustand; Reward: Heuer-Reduktion</li>
 <li><strong>Atheria-Resonanz</strong>: Netto-Wert-Skalierung in Rezession; Reward: Prestige/Meilenstein</li>
 <li><strong>Familiendynastie</strong>: Familien- und Kapitalziel; Reward: Erbfortfuehrung statt hartem Reset</li>
+<li><strong>Braumeisterbund</strong>: Bier-Absatzauftrag ueber mehrere Maerkte</li>
+<li><strong>Nordholz-Vertrag</strong>: Holz-Volumenquest fuer Langstreckenhandel</li>
+<li><strong>Routenmeister</strong>: Mindestens 6 verschiedene Staedte aktiv anlaufen</li>
+<li><strong>Arsenal der Hanse</strong>: Flotte auf Zielzahl bei Schiffen und Kanonen ausbauen</li>
+<li><strong>Betriebskampagnen</strong>: Fuer <strong>jeden</strong> Betrieb gibt es <strong>8 Queststufen</strong> (verkaufsbasiert auf Outputware, mit Staffel-Rewards)</li>
 </ul>
 <h3>5.10 Auto-Modus (Atheria-Autopilot)</h3>
 <p>Der <code>Auto</code>-Button uebergibt die Kontrolle an Atheria:</p>
@@ -516,13 +573,29 @@ Wenn ein Schiff mit Ladung auslaeuft, werden Zielortpreise je Ware als gebundene
 <li>automatische Routenwahl mit Zielpreis-/Margenlogik</li>
 <li>Schiffbau, Reparaturen und Kanonen-Upgrades</li>
 <li>Monatsfortschritt ohne manuellen Eingriff</li>
+<li>Heiratsanfragen erscheinen auch im Auto-Modus als Popup und werden nach kurzer Anzeigedauer beantwortet</li>
+<li>Progression ist bewusst gebremst (Trade-Budget-Anteil, Schiffbau-Cooldown, Titel-Monatsgating)</li>
 <li>Mit Jahrhundertwechseln nutzt der Auto-Modus automatisch neue Handelsgueter, neue Schiffstypen und neue Waffentechnologien</li>
 <li>Kanonenkaeufe orientieren sich dynamisch am aktiven Waffenprofil des aktuellen Jahrhunderts (Kosten/Wirkung)</li>
 </ul>
-<p>Der Lauf endet automatisch bei:</p>
+<p>Wichtig: Der Auto-Modus ist ein Autopilot, aber kein Unsterblichkeitsmodus.<br>
+Das Handelshaus kann auch im Auto-Betrieb enden.</p>
+<p>Hauefigste Ursachen fuer <code>Handelshaus erloschen</code> im Auto-Modus:</p>
 <ul>
-<li>Meldung <code>Zeitlimit erreicht. Lade einen Slot oder starte neu.</code></li>
-<li>Verlustbedingung ohne fortsetzbare Ressourcen</li>
+<li><strong>Tod des Vorfahren (Altersevent)</strong><br>
+Ab Alter &gt; 60 wird jaehrlich ein Todeswurf gemacht.<br>
+Gibt es dann <strong>kein Kind</strong> und <strong>keine gesicherte Dynastie-Nachfolge</strong> (Mission <em>Familiendynastie</em>), endet das Handelshaus sofort.</li>
+<li><strong>Kompletter Flottenverlust</strong><br>
+Wenn alle Schiffe verloren gehen und kein Ersatzschiff gestellt werden kann, endet das Handelshaus.</li>
+<li><strong>Auto-Stop nach Verlustzustand</strong><br>
+Sobald <code>alive = False</code>, beendet sich der Auto-Modus mit Logzeile wie <code>Auto-Modus beendet: Handelshaus erloschen.</code></li>
+</ul>
+<p>Wie verhindert man das:</p>
+<ul>
+<li>frueh heiraten/Kind bekommen (Nachfolge absichern)</li>
+<li>Button <code>Nachkommen zeugen</code> im Hauptfenster nutzen (erstellt sofort ein Kind, wenn verheiratet)</li>
+<li>Mission <strong>Familiendynastie</strong> abschliessen (Erbe mit Startkapital)</li>
+<li>Flotte regelmaessig reparieren und nicht dauerhaft in Hochrisiko-Seezustaenden ueberdehnen</li>
 </ul>
 <h3>5.11 Jahrhundertwechsel, Freischaltungen und automatische Aufwertung</h3>
 <p>Mit jedem neuen Jahrhundert erweitert sich die Spielwelt automatisch:</p>
@@ -537,11 +610,43 @@ Wenn ein Schiff mit Ladung auslaeuft, werden Zielortpreise je Ware als gebundene
 <li>Der Auto-Modus handelt neue Waren ohne Extra-Konfiguration, sobald sie verfuegbar sind.</li>
 <li>Beim Schiffbau greift er auf das aktuell freigeschaltete Werftangebot zu.</li>
 <li>Bei Wartung/Aufruestung kauft er Kanonen auf Basis der aktiven Jahrhundert-Technik.</li>
+<li>Die Werft zeigt pro Jahrhundert nur aktuelle Schiffsmodelle; veraltete Modelle sind nicht mehr kaufbar.</li>
+<li>Im Schiff-Editor lassen sich Kanonenstufen (alt bis neu) waehlen und gezielt montieren.</li>
 </ul>
 <p>Manuelles Ersetzen alter Schiffe:</p>
 <ul>
 <li>Alte Schiffe koennen im Hafen verkauft werden (nicht auf See, nicht beladen, letztes Schiff ist gesperrt).</li>
 <li>So lassen sich Flotten gezielt gegen neue Jahrhundertmodelle austauschen.</li>
+</ul>
+<h3>5.12 Anteilssystem, passive Rendite und Stadtrettung</h3>
+<p>Die Weltwirtschaft besitzt einen zusaetzlichen <strong>Beteiligungsmarkt</strong> pro Stadt und Betrieb.</p>
+<ul>
+<li>Anteilskauf erfolgt je Betrieb in Prozentpunkten (z. B. +5%).</li>
+<li>Der Anteilskurs wird aus Rezeptwert (Input/Output), Gebaeudelevel und Technologieepoche abgeleitet.</li>
+<li>Ein Teil des Kaufpreises fliesst direkt in die Stadtkasse.</li>
+</ul>
+<p>Passive Rendite:</p>
+<ul>
+<li>Bei laufender Produktion entsteht je Betrieb ein monatlicher <strong>Dividendenpool</strong>.</li>
+<li>Deine Auszahlung ergibt sich aus <code>Dividendenpool * Anteil%</code>.</li>
+<li>Auszahlungen sind durch die reale Stadtkasse gedeckelt (keine unendliche Geldquelle).</li>
+</ul>
+<p>Politischer Einfluss:</p>
+<ul>
+<li>Anteilskauf und Dividenden steigern den stadtbezogenen Einflusswert.</li>
+<li>Einfluss ist stadtlokal und wird im Status/Weltwirtschaftsfenster angezeigt.</li>
+</ul>
+<p>Stadtrettung bei Bankrott:</p>
+<ul>
+<li>Unterhalb eines kritischen Kassenwerts gilt eine Stadt als bankrottgefaehrdet.</li>
+<li>In diesem Zustand laufen Betriebe gedrosselt und Preise erhalten einen Krisenaufschlag.</li>
+<li>Mit ausreichendem Einfluss kann der Spieler einen <strong>Rettungsfonds</strong> einzahlen.</li>
+<li>Die Einzahlung hebt die Stadtkasse direkt an (mit Einflussbonus) und kann die Stadt wieder stabilisieren.</li>
+</ul>
+<p>Bedienung:</p>
+<ul>
+<li><strong>CLI:</strong> <code>Weltwirtschaft</code> -&gt; Stadt waehlen -&gt; <code>Anteile kaufen</code> / <code>Rettungsfonds</code>.</li>
+<li><strong>pygame:</strong> <code>Stadtpreise</code>-Fenster -&gt; Betrieb waehlen -&gt; <code>+5% Anteil</code> bzw. <code>Rettung 1000</code>.</li>
 </ul>
 <hr>
 <h2>6) UI-Erklaerung (Interface Guide)</h2>
@@ -549,7 +654,7 @@ Wenn ein Schiff mit Ladung auslaeuft, werden Zielortpreise je Ware als gebundene
 <p>Die Hauptoberflaeche besteht aus vier Kernbereichen:</p>
 <ol>
 <li><strong>Top-Statusleiste</strong><br>
-ANNO/Monat, Seezustand, Spielerwerte, aktives Schiff, ATHERIA-Kennzahlen.</li>
+ANNO/Monat, Seezustand, Spielerwerte, aktives Schiff, ATHERIA-Kennzahlen.<br>Steuer-/Migrationswerte in der Weltzeile werden zur Lesbarkeit kompakt als <code>K/M/B/T</code> dargestellt.</li>
 <li><strong>Marktpanel (links)</strong><br>
 Warenliste mit Preis, Lagerbestand und Zielpreisvorschau.</li>
 <li><strong>Flottenpanel (mitte)</strong><br>
@@ -559,10 +664,13 @@ Kaufen/Verkaufen, Menge, Ladung, Schiffbau, Editor, Reparaturen, Monatswechsel, 
 </ol>
 <p>Zusatzfenster:</p>
 <ul>
-<li><strong>Stadtpreise</strong>: Preise jeder Stadt im aktuellen Monat</li>
+<li><strong>Stadtpreise</strong>: Preise jeder Stadt im aktuellen Monat, inkl. entzerrter Betriebsdaten</li>
 <li><strong>Missionen</strong>: Fortschritt aller Langzeitziele</li>
+<li><strong>Info</strong>: Gesamtstatus des Spielers (Titel, Familie, Finanzen, Flotte, Missionen), inkl. Scroll</li>
 <li><strong>Schiffsladung</strong>: Transfer Lager &lt;-&gt; Schiff + Reiseziel</li>
-<li><strong>Schiff-Editor</strong>: Name + Kanonenkauf</li>
+<li><strong>Schiff-Editor</strong>: Name + Kanonenkauf, inkl. scrollbarer Kanonenliste</li>
+<li><strong>Weltwirtschaft (CLI)</strong>: Pro Stadt Betriebsliste inkl. Inputs/Outputs, Aktivstatus und Laufbarkeit</li>
+<li><strong>CSV-Export</strong>: Vollreport ueber Stadtinventare, Betriebe, NPCs, Missionen und Flotte</li>
 </ul>
 <p><img src="images/paper_texture_chronik.webp" alt="Chronik-Texture">
 <img src="images/paper_texture_transfer.webp" alt="Transfer-Texture"></p>

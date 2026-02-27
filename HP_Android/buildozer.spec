@@ -23,7 +23,9 @@ source.include_exts = py,png,webp,jpg,jpeg,ttf,otf,json,txt
 entrypoint = main.py
 
 # (list) Application requirements
-requirements = python3, pygame
+# Keep target python and hostpython pinned to the same version to avoid
+# longintrepr.h header mismatch when building pygame.
+requirements = python3==3.10.11, hostpython3==3.10.11, pygame
 
 # (str) Android app theme
 # android.theme = @android:style/Theme.NoTitleBar

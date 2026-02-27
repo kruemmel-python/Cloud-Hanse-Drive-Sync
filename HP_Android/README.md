@@ -27,8 +27,12 @@ Aktuelle App-Konfiguration:
 - Marktliste ist scrollbar (Mausrad/Touch + Scrollbuttons `^` `v`), damit neue Jahrhundert-Waren sichtbar bleiben.
 - Auto-Modus spielt eigenstaendig weiter (Handel, Reisen, Schiffbau/Upgrades) und zeigt Heiratsanfragen als Popup.
 - Auto-Progression ist gebremst (Trade-Budget-Anteil, Schiffbau-Cooldown, zeitliches Titel-Gating), damit der Aufstieg stabil bleibt.
+- Auto-Modus bleibt risikobehaftet (kein Unsterblichkeitsmodus): ohne Nachfolge oder bei komplettem Flottenverlust endet das Handelshaus.
+- Button `Nachkommen zeugen` ist im Hauptscreen verfuegbar, um die Nachfolge aktiv zu sichern.
 - Wenn keine externe ATHERIA-Runtime verfuegbar ist, nutzt Android automatisch das mobile ATHERIA-Profil.
 - Save-Slots speichern zusaetzlich den Weltzustand (`world_economy`, `npcs`) bei Legacy-kompatiblem Laden.
+- Steuer-/Migrationswerte werden kompakt als `K/M/B/T` angezeigt; extrem grosse Altdaten werden beim Laden begrenzt.
+- CSV-Export schreibt auf Android in den Download-Ordner statt ins App-internal-Verzeichnis.
 
 Icon neu erzeugen:
 ```bash
