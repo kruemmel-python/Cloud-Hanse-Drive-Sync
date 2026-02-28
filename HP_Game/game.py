@@ -86,6 +86,9 @@ BAILOUT_INFLUENCE_COST = 4.0
 INFLUENCE_PER_SHARE_PURCHASE = 0.30
 INFLUENCE_PER_DIVIDEND_1000 = 0.35
 CHILD_MORTALITY_VULNERABLE_AGE = 6
+CLI_AUTO_RESERVE_PER_SHIP_MARK = 420
+CLI_AUTO_POLICY_RESERVE_STEP = 250
+CLI_AUTO_POLICY_MIN_ROUTE_SCORE = 20
 
 RECIPE_UNLOCK_CENTURY: Dict[str, int] = {
     "brewery": 14,
@@ -331,6 +334,8 @@ class HanseGame:
         self.current_month = STARTING_MONTH
         self.current_sea_state = "bewegte See"
         self._market_cache: Dict[Tuple[int, int, str, str], Dict[str, int]] = {}
+        self._market_breakdown_cache: Dict[Tuple[int, int, str, str], Dict[str, Dict[str, float]]] = {}
+        self.city_dashboard_cache: Dict[Tuple[int, int, str], Dict[str, Any]] = {}
         self.economy_engine = AtheriaEconomyEngine()
         economy_year = self.current_year + (self.current_month - 1) / 12.0
         self.economy_state = self.economy_engine.for_year(
@@ -908,6 +913,8 @@ class HanseGame:
         bankrupt_count = sum(1 for city_name in CITIES if self._city_is_bankrupt(city_name))
         # NPCs handeln vor dem Spieler. Danach bleiben Preise fuer den Monat gecached stabil.
         self._market_cache.clear()
+        self._market_breakdown_cache.clear()
+        self.city_dashboard_cache.clear()
         self.last_world_tick = {
             "producing_buildings": production_count,
             "npc_trades": npc_trade_count,
@@ -930,9 +937,108 @@ class HanseGame:
                 return False
         return True
 
+    def _city_dashboard_metrics(self, city_name: str) -> Dict[str, Any]:
+        city = self._city_economy(city_name)
+        cache_key = (self.current_year, self.current_month, city_name)
+        cached = self.city_dashboard_cache.get(cache_key)
+        if isinstance(cached, dict):
+            return dict(cached)
+
+        food_stock = (
+            city.inventory.get("Getreide", 0)
+            + city.inventory.get("Hering", 0)
+            + city.inventory.get("Salz", 0)
+        )
+        food_need = max(140, int(city.population * 0.14))
+        food_ratio = food_stock / max(1, food_need)
+        crowding = _clamp((city.population / max(300.0, city.population * 0.52 + 1200.0)) - 1.0, 0.0, 2.5)
+
+        hospital_lvl = self._institution_level(city, "hospital")
+        doctors_lvl = self._institution_level(city, "doctors")
+        sanitation_lvl = self._institution_level(city, "sanitation")
+        medical_quality = _clamp(
+            0.20
+            + (hospital_lvl * 0.10)
+            + (doctors_lvl * 0.14)
+            + (sanitation_lvl * 0.07)
+            + (float(city.hazard_mitigation) * 0.35),
+            0.08,
+            1.30,
+        )
+        institutions = " | ".join(
+            f"{name}:{max(0, int(level))}"
+            for name, level in sorted(city.institutions.items())
+            if max(0, int(level)) > 0
+        )
+        if not institutions:
+            institutions = "-"
+
+        metrics: Dict[str, Any] = {
+            "food_ratio": float(food_ratio),
+            "crowding": float(crowding),
+            "disease_pressure": float(city.disease_pressure),
+            "medical_quality": float(medical_quality),
+            "migration": int(city.migration),
+            "bankruptcy": int(self._city_is_bankrupt(city_name)),
+            "institutions": institutions,
+            "infrastructure": float(city.infrastructure),
+            "population": int(city.population),
+            "social_stability": float(city.social_stability),
+            "quality_of_life": float(city.quality_of_life),
+            "doctor_coverage": float(city.doctor_coverage),
+            "tax_income": int(city.tax_income),
+        }
+        self.city_dashboard_cache[cache_key] = dict(metrics)
+        return metrics
+
+    def _market_price_breakdown(self, city: str, good_name: str) -> Dict[str, float]:
+        cache_key = (self.current_year, self.current_month, self.current_sea_state, city)
+        if cache_key not in self._market_breakdown_cache:
+            self._market_prices(city)
+        city_data = self._market_breakdown_cache.get(cache_key, {})
+        entry = city_data.get(good_name)
+        return dict(entry) if isinstance(entry, dict) else {}
+
+    def _show_price_breakdown(self, city_name: str) -> None:
+        goods = self._active_good_names()
+        if not goods:
+            print("Keine Waren verfuegbar.")
+            return
+        print()
+        print("Preisanalyse")
+        for idx, good_name in enumerate(goods, start=1):
+            print(f"{idx}) {good_name}")
+        print("0) Zurueck")
+        choice = self._ask_int(f"Ware (0-{len(goods)}): ", 0, len(goods))
+        if choice == 0:
+            return
+        good_name = goods[choice - 1]
+        data = self._market_price_breakdown(city_name, good_name)
+        if not data:
+            print("Keine Analyse verfuegbar.")
+            return
+        print("-" * 70)
+        print(f"Preisanalyse {good_name} in {city_name}")
+        print(
+            "Formel: Basispreis x CityBias x Sea x Makro x Inventory/Scarcity x "
+            "(local_scarcity_relief) x Drift x Bankruptcy"
+        )
+        print(f"Basispreis:             {data.get('base_price', 0):.4f}")
+        print(f"CityBias:               {data.get('city_bias', 0):.4f}")
+        print(f"Sea:                    {data.get('sea_factor', 0):.4f}")
+        print(f"Makro:                  {data.get('macro_factor', 0):.4f}")
+        print(f"Inventory/Scarcity:     {data.get('scarcity_base', 0):.4f}")
+        print(f"local_scarcity_relief:  {data.get('local_scarcity_relief', 0):.4f}")
+        print(f"Scarcity final:         {data.get('scarcity_final', 0):.4f}")
+        print(f"Drift:                  {data.get('drift_factor', 0):.4f}")
+        print(f"Bankruptcy:             {data.get('bankruptcy_factor', 0):.4f}")
+        print(f"Finalpreis:             {int(data.get('final_price', 0))}")
+        print("-" * 70)
+
     def _show_city_economy(self, city_name: str, player: Player | None = None) -> None:
         city = self._city_economy(city_name)
         prices = self._market_prices(city_name)
+        dashboard = self._city_dashboard_metrics(city_name)
         city_status = "BANKROTTGEFAEHRDET" if self._city_is_bankrupt(city_name) else "stabil"
         print()
         print("=" * 70)
@@ -945,6 +1051,20 @@ class HanseGame:
             influence = self._player_city_influence(player, city_name)
             share_sum = sum(self._player_building_share_percent(player, city_name, b.id) for b in city.buildings)
             print(f"Ihr Einfluss: {influence:.1f} | Ihr Anteilsportfolio: {share_sum:.1f}%")
+        print("--- Stadtgesundheit & Gesellschaft ---")
+        print(
+            f"Food Ratio {dashboard['food_ratio']:.2f} | Crowding {dashboard['crowding']:.2f} | "
+            f"Disease Pressure {dashboard['disease_pressure']:.2f} | Medical Quality {dashboard['medical_quality']:.2f}"
+        )
+        print(
+            f"Migration {dashboard['migration']:+d} | Bankruptcy {dashboard['bankruptcy']} | "
+            f"Infrastructure {dashboard['infrastructure']:.2f}"
+        )
+        print(
+            f"Population {dashboard['population']} | Social Stability {dashboard['social_stability']:.1f} | "
+            f"Quality of Life {dashboard['quality_of_life']:.1f} | Doctor Coverage {dashboard['doctor_coverage']:.2f}"
+        )
+        print(f"Steuern/Monat {dashboard['tax_income']} | Institutions {dashboard['institutions']}")
         print("-" * 70)
         print("Betriebe:")
         for idx, building in enumerate(city.buildings, start=1):
@@ -1086,12 +1206,14 @@ class HanseGame:
             city_name = CITIES[choice - 1]
             while True:
                 self._show_city_economy(city_name, player)
-                print("1) Anteile kaufen  2) Rettungsfonds  3) Zurueck")
-                action = self._ask_int("Auswahl: ", 1, 3)
+                print("1) Anteile kaufen  2) Rettungsfonds  3) Preisanalyse  4) Zurueck")
+                action = self._ask_int("Auswahl: ", 1, 4)
                 if action == 1:
                     self._buy_city_shares_menu(player, city_name)
                 elif action == 2:
                     self._bailout_city(player, city_name)
+                elif action == 3:
+                    self._show_price_breakdown(city_name)
                 else:
                     break
 
@@ -1302,6 +1424,7 @@ class HanseGame:
             self.current_sea_state = self.rng.choice(SEA_STATES)
             self._refresh_economy_for_year()
             world_tick = self._run_world_month_tick()
+            year_rolled = False
             print()
             print(f"ANNO {self.current_year} {MONTHS[self.current_month - 1]} - {self.current_sea_state}")
             print(f"Atheria-Wirtschaft: {self.economy_state.summary}")
@@ -1320,7 +1443,10 @@ class HanseGame:
             if self.current_month > 12:
                 self.current_month = 1
                 self.current_year += 1
+                year_rolled = True
             self.players = [p for p in self.players if p.alive]
+            if year_rolled and self.players:
+                self._auto_save_active_slot()
             if not self.players:
                 break
             if not self._ask_yes_no("Naechster Monat beginnen? (j/n): "):
@@ -1344,6 +1470,8 @@ class HanseGame:
         )
         self._ensure_world_state()
         self._market_cache.clear()
+        self._market_breakdown_cache.clear()
+        self.city_dashboard_cache.clear()
 
     def _start_new_game(self) -> None:
         self._ensure_world_state(reset_world=True, reset_npcs=True)
@@ -1491,6 +1619,8 @@ class HanseGame:
                 reset_npcs=not isinstance(npcs_data, list),
             )
             self._market_cache.clear()
+            self._market_breakdown_cache.clear()
+            self.city_dashboard_cache.clear()
             self.active_slot = slot
             return True
         except (OSError, ValueError, KeyError, TypeError):
@@ -1518,6 +1648,15 @@ class HanseGame:
         except OSError:
             return False
 
+    def _auto_save_active_slot(self) -> None:
+        if self.active_slot is None:
+            return
+        slot = max(1, min(SAVE_SLOT_COUNT, int(self.active_slot)))
+        if self._save_game(self._slot_path(slot), slot):
+            print(f"Jahreswechsel: Slot {slot} automatisch gespeichert.")
+        else:
+            print(f"Jahreswechsel: Slot {slot} konnte nicht gespeichert werden.")
+
     def _play_turn(self, player: Player) -> None:
         print()
         print(f"--- {player.name} ({self._title_for(player)}) in {player.city} ---")
@@ -1534,13 +1673,18 @@ class HanseGame:
             self._end_of_turn(player)
             return
 
+        if player.auto_enabled:
+            self._auto_take_turn(player)
+            return
+
         while True:
             print()
             print(
                 "1) Status  2) Markt  3) Reise  4) Hafen  5) Investition  6) Runde Ende  "
-                "7) Speichern  8) Missionen  9) Weltwirtschaft  10) CSV-Export"
+                "7) Speichern  8) Missionen  9) Weltwirtschaft  10) CSV-Export  "
+                "11) Auto ein/aus  12) Auto-Policy  13) Auto jetzt (1 Monat)"
             )
-            choice = self._ask_int("Auswahl: ", 1, 10)
+            choice = self._ask_int("Auswahl: ", 1, 13)
             if choice == 1:
                 self._show_status(player)
             elif choice == 2:
@@ -1567,7 +1711,348 @@ class HanseGame:
                     print(f"CSV exportiert: {csv_path}")
                 else:
                     print("CSV-Export fehlgeschlagen.")
+            elif choice == 11:
+                player.auto_enabled = not bool(player.auto_enabled)
+                print(f"Auto-Modus {'aktiviert' if player.auto_enabled else 'deaktiviert'}.")
+            elif choice == 12:
+                self._auto_config_menu(player)
+            elif choice == 13:
+                self._auto_take_turn(player)
+                return
         if player.alive:
+            self._end_of_turn(player)
+
+    def _default_auto_policy(self) -> Dict[str, Any]:
+        return {
+            "risk": 50,
+            "reserve_mark": 1400,
+            "invest_mode": "balanced",
+            "focus_cities": {city_name: True for city_name in CITIES},
+        }
+
+    def _player_auto_policy(self, player: Player) -> Dict[str, Any]:
+        policy = dict(self._default_auto_policy())
+        raw = player.auto_policy if isinstance(player.auto_policy, dict) else {}
+        try:
+            policy["risk"] = max(0, min(100, int(raw.get("risk", policy["risk"]))))
+        except (TypeError, ValueError):
+            policy["risk"] = 50
+        try:
+            policy["reserve_mark"] = max(0, int(raw.get("reserve_mark", policy["reserve_mark"])))
+        except (TypeError, ValueError):
+            policy["reserve_mark"] = 1400
+        invest_mode = str(raw.get("invest_mode", policy["invest_mode"])).strip().lower()
+        if invest_mode not in {"conservative", "balanced", "aggressive"}:
+            invest_mode = "balanced"
+        policy["invest_mode"] = invest_mode
+        focus_raw = raw.get("focus_cities", {})
+        focus_map = {city_name: True for city_name in CITIES}
+        if isinstance(focus_raw, dict):
+            for city_name in CITIES:
+                focus_map[city_name] = bool(focus_raw.get(city_name, True))
+        if not any(bool(v) for v in focus_map.values()):
+            focus_map[CITIES[0]] = True
+        policy["focus_cities"] = focus_map
+        player.auto_policy = dict(policy)
+        return policy
+
+    def _auto_route_min_score(self, policy: Dict[str, Any]) -> int:
+        risk = max(0, min(100, int(policy.get("risk", 50))))
+        return max(CLI_AUTO_POLICY_MIN_ROUTE_SCORE, min(260, int(round(220 - (risk * 2.0)))))
+
+    def _auto_trade_budget_share(self, policy: Dict[str, Any]) -> float:
+        risk = max(0, min(100, int(policy.get("risk", 50))))
+        return _clamp(0.35 + (risk / 200.0), 0.35, 0.85)
+
+    def _auto_player_reserve(self, player: Player, policy: Dict[str, Any]) -> int:
+        base = max(0, int(policy.get("reserve_mark", 1400)))
+        fleet_part = len(player.ships) * CLI_AUTO_RESERVE_PER_SHIP_MARK
+        return max(base, 500 + fleet_part)
+
+    def _auto_focus_targets(self, origin_city: str, policy: Dict[str, Any]) -> List[str]:
+        focus_map = policy.get("focus_cities", {})
+        targets = [
+            city_name
+            for city_name in CITIES
+            if city_name != origin_city and bool(focus_map.get(city_name, False))
+        ]
+        if not targets:
+            targets = [city_name for city_name in CITIES if city_name != origin_city]
+        return targets
+
+    def _auto_config_menu(self, player: Player) -> None:
+        policy = self._player_auto_policy(player)
+        while True:
+            print()
+            print("=== Auto-Policy ===")
+            print(f"Auto aktiv: {'ja' if player.auto_enabled else 'nein'}")
+            print(f"1) Risiko: {policy['risk']}")
+            print(f"2) Reserve: {policy['reserve_mark']} Mark")
+            print(f"3) Investitionsstil: {policy['invest_mode']}")
+            print("4) Fokus-Staedte")
+            print("0) Zurueck")
+            choice = self._ask_int("Auswahl: ", 0, 4)
+            if choice == 0:
+                player.auto_policy = dict(policy)
+                return
+            if choice == 1:
+                policy["risk"] = self._ask_int("Risiko (0-100): ", 0, 100)
+            elif choice == 2:
+                max_reserve = max(50_000, max(0, int(player.money)) + 50_000)
+                policy["reserve_mark"] = self._ask_int(
+                    f"Reserve (0-{max_reserve}): ",
+                    0,
+                    max_reserve,
+                )
+            elif choice == 3:
+                options = ["conservative", "balanced", "aggressive"]
+                current = options.index(policy["invest_mode"]) if policy["invest_mode"] in options else 1
+                print(f"Aktuell: {policy['invest_mode']}")
+                print("1) conservative  2) balanced  3) aggressive")
+                mode_idx = self._ask_int("Stil: ", 1, 3) - 1
+                policy["invest_mode"] = options[mode_idx] if mode_idx >= 0 else options[current]
+            elif choice == 4:
+                while True:
+                    print()
+                    print("Fokus-Staedte (1=aktiv, 0=inaktiv):")
+                    for idx, city_name in enumerate(CITIES, start=1):
+                        state = 1 if bool(policy["focus_cities"].get(city_name, True)) else 0
+                        print(f"{idx}) {city_name:10} [{state}]")
+                    print("0) Zurueck")
+                    city_choice = self._ask_int(f"Stadt toggeln (0-{len(CITIES)}): ", 0, len(CITIES))
+                    if city_choice == 0:
+                        break
+                    city_name = CITIES[city_choice - 1]
+                    policy["focus_cities"][city_name] = not bool(policy["focus_cities"].get(city_name, True))
+                    if not any(bool(v) for v in policy["focus_cities"].values()):
+                        policy["focus_cities"][city_name] = True
+                        print("Mindestens eine Fokus-Stadt muss aktiv bleiben.")
+            player.auto_policy = dict(policy)
+
+    def _auto_choose_route_with_policy(
+        self,
+        player: Player,
+        ship: Ship,
+        policy: Dict[str, Any],
+    ) -> Tuple[str, List[Tuple[str, int, int]], int] | None:
+        if ship.is_at_sea:
+            return None
+        origin = ship.city
+        origin_prices = self._market_prices(origin)
+        discount = self._city_discount(player, origin)
+        min_score = self._auto_route_min_score(policy)
+        budget_share = self._auto_trade_budget_share(policy)
+        reserve = self._auto_player_reserve(player, policy)
+        best_target = ""
+        best_plan: List[Tuple[str, int, int]] = []
+        best_profit = 0
+        best_score = -10**9
+        for target in self._auto_focus_targets(origin, policy):
+            distance = abs(CITIES.index(origin) - CITIES.index(target)) + 1
+            travel_cost = 60 + distance * 25
+            available = max(0, player.money - reserve - travel_cost)
+            budget = max(0, int(available * budget_share))
+            capacity = ship.cargo_space_left
+            if budget <= 0 or capacity <= 0:
+                continue
+            target_prices = self._market_prices(target)
+            opportunities: List[Tuple[float, int, int, int, str]] = []
+            for good_name in self._active_good_names():
+                buy_price = origin_prices.get(good_name, 0)
+                if buy_price <= 0:
+                    continue
+                if discount > 0:
+                    buy_price = max(1, int(round(buy_price * (1 - discount))))
+                sell_price = target_prices.get(good_name, 0)
+                margin = sell_price - buy_price
+                if margin <= 0:
+                    continue
+                stock = self._city_inventory_qty(origin, good_name)
+                available_stock = max(0, stock - 10)
+                if available_stock <= 0:
+                    continue
+                roi = margin / max(1, buy_price)
+                opportunities.append((roi, margin, buy_price, available_stock, good_name))
+            opportunities.sort(reverse=True)
+            plan: List[Tuple[str, int, int]] = []
+            expected_profit = 0
+            for _roi, margin, buy_price, available_stock, good_name in opportunities:
+                if capacity <= 0 or budget < buy_price:
+                    break
+                qty = min(capacity, budget // buy_price, available_stock)
+                if qty <= 0:
+                    continue
+                plan.append((good_name, int(qty), int(buy_price)))
+                budget -= int(qty) * int(buy_price)
+                capacity -= int(qty)
+                expected_profit += int(qty) * int(margin)
+            if not plan:
+                continue
+            score = expected_profit - travel_cost
+            if score > best_score:
+                best_target = target
+                best_plan = plan
+                best_profit = expected_profit
+                best_score = score
+        if not best_plan or best_score < min_score:
+            return None
+        return best_target, best_plan, best_profit
+
+    def _auto_execute_trade_with_policy(
+        self,
+        player: Player,
+        ship: Ship,
+        target: str,
+        plan: List[Tuple[str, int, int]],
+    ) -> bool:
+        origin = ship.city
+        loaded = 0
+        spent = 0
+        for good_name, desired_qty, buy_price in plan:
+            if ship.cargo_space_left <= 0:
+                break
+            affordable = player.money // max(1, buy_price)
+            want_qty = min(int(desired_qty), ship.cargo_space_left, affordable)
+            if want_qty <= 0:
+                continue
+            bought = self._city_take_inventory(origin, good_name, want_qty)
+            if bought <= 0:
+                continue
+            cost = bought * max(1, buy_price)
+            player.money -= cost
+            player.cargo[good_name] = player.cargo.get(good_name, 0) + bought
+            loaded += bought
+            spent += cost
+
+        if loaded <= 0:
+            return False
+
+        distance = abs(CITIES.index(origin) - CITIES.index(target)) + 1
+        travel_cost = 60 + distance * 25
+        if player.money < travel_cost:
+            return False
+        player.money -= travel_cost
+        player.city = target
+        self._record_city_visit(player, target)
+        player.chronicle.append(f"ANNO {self.current_year}: Auto-Route {origin}->{target}.")
+        self._resolve_travel_risk(player, origin, target)
+        if not player.alive:
+            return True
+
+        prices = self._market_prices(target)
+        revenue = 0
+        sold_units = 0
+        for good_name in self._active_good_names():
+            qty = player.cargo.get(good_name, 0)
+            if qty <= 0:
+                continue
+            unit_price = prices.get(good_name, 0)
+            if unit_price <= 0:
+                continue
+            revenue += qty * unit_price
+            sold_units += qty
+            player.cargo[good_name] = 0
+            self._city_add_inventory(target, good_name, qty)
+            self._record_hanse_delivery(player, target, good_name, qty)
+            self._record_trade_for_missions(player, good_name, qty)
+        player.money += revenue
+        if sold_units > 0:
+            player.reputation = min(200, player.reputation + 1)
+            print(f"Auto-Handel: Route {origin}->{target}, Ladung {sold_units}, Gewinn {revenue - spent - travel_cost} Mark.")
+        return True
+
+    def _auto_invest_with_policy(self, player: Player, policy: Dict[str, Any]) -> None:
+        mode = str(policy.get("invest_mode", "balanced")).strip().lower()
+        reserve = self._auto_player_reserve(player, policy)
+        if mode == "conservative":
+            return
+
+        city = self._city_economy(player.city)
+        building_candidates: List[Tuple[int, int, Building]] = []
+        for building in city.buildings:
+            if RECIPE_UNLOCK_CENTURY.get(building.id, 14) > self._current_century():
+                continue
+            free_pct = max(0.0, MAX_BUILDING_SHARE_PERCENT - self._total_building_share_percent(player.city, building.id))
+            if free_pct < 5.0:
+                continue
+            pool = self._building_dividend_pool(player.city, building.id)
+            price_per_pct = self._share_price_per_percent(player.city, building)
+            if price_per_pct <= 0:
+                continue
+            building_candidates.append((pool, -price_per_pct, building))
+        building_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        max_share_buys = 1 if mode == "balanced" else 2
+        for _pool, _neg_price, building in building_candidates[:max_share_buys]:
+            price_per_pct = self._share_price_per_percent(player.city, building)
+            pct = 5
+            cost = pct * price_per_pct
+            if player.money - cost < reserve:
+                continue
+            player.money -= cost
+            city.treasury += int(round(cost * 0.45))
+            new_pct = self._player_building_share_percent(player, player.city, building.id) + pct
+            self._set_player_building_share_percent(player, player.city, building.id, new_pct)
+            self._add_player_city_influence(player, player.city, pct * INFLUENCE_PER_SHARE_PURCHASE)
+            recipe = PRODUCTION_RECIPES.get(building.id)
+            label = recipe.name if recipe else building.id
+            print(f"Auto-Invest: +{pct}% Anteil an {label} in {player.city}.")
+
+        if mode == "aggressive":
+            surplus = player.money - reserve
+            if surplus >= 4000:
+                amount = max(1500, min(int(surplus * 0.25), surplus))
+                player.money -= amount
+                player.market_investments.append(Investment(amount=amount, turns_left=1, risk=2))
+                print(f"Auto-Invest: Markteinsatz {amount} Mark (balanced risk).")
+
+    def _auto_take_turn(self, player: Player) -> None:
+        if not player.alive:
+            return
+        policy = self._player_auto_policy(player)
+        ship = player.ship
+
+        reserve = self._auto_player_reserve(player, policy)
+        while ship.hull < 90:
+            amount = min(10, 100 - ship.hull)
+            cost = amount * 16
+            if player.money - cost < reserve:
+                break
+            ship.hull += amount
+            player.money -= cost
+        while ship.rigging < 90:
+            amount = min(10, 100 - ship.rigging)
+            cost = amount * 12
+            if player.money - cost < reserve:
+                break
+            ship.rigging += amount
+            player.money -= cost
+
+        current_prices = self._market_prices(player.city)
+        sold_revenue = 0
+        for good_name in self._active_good_names():
+            qty = player.cargo.get(good_name, 0)
+            if qty <= 0:
+                continue
+            unit_price = current_prices.get(good_name, 0)
+            sold_revenue += qty * unit_price
+            player.cargo[good_name] = 0
+            self._city_add_inventory(player.city, good_name, qty)
+            self._record_hanse_delivery(player, player.city, good_name, qty)
+            self._record_trade_for_missions(player, good_name, qty)
+        if sold_revenue > 0:
+            player.money += sold_revenue
+            player.reputation = min(200, player.reputation + 1)
+            print(f"Auto-Handel: Lager aufgeloest in {player.city}, Erlos {sold_revenue} Mark.")
+
+        route = self._auto_choose_route_with_policy(player, ship, policy)
+        if route:
+            target, plan, _profit = route
+            self._auto_execute_trade_with_policy(player, ship, target, plan)
+        else:
+            print("Auto-Handel: Keine rentable Route fuer die aktuelle Policy.")
+
+        if player.alive:
+            self._auto_invest_with_policy(player, policy)
             self._end_of_turn(player)
 
     def _show_status(self, player: Player) -> None:
@@ -2185,26 +2670,45 @@ class HanseGame:
         global_price_level = self.economy_state.global_price_level
         bankruptcy_factor = 1.10 if self._city_is_bankrupt(city) else 1.0
         prices: Dict[str, int] = {}
+        breakdown_by_good: Dict[str, Dict[str, float]] = {}
         for good_name, params in self._active_goods().items():
             base = params["base_price"]
             volatility = params["volatility"]
             drift = self.rng.uniform(-volatility, volatility)
+            drift_factor = 1.0 + drift
             good_macro = self.economy_state.good_factor(good_name)
-            stock_factor = city_economy.scarcity_factor(good_name)
+            macro_factor = global_price_level * city_macro * good_macro
+            scarcity_parts = city_economy.scarcity_components(good_name)
+            scarcity_base = float(scarcity_parts.get("scarcity_base", 1.0))
+            local_relief = float(scarcity_parts.get("local_scarcity_relief", 0.0))
+            stock_factor = float(scarcity_parts.get("scarcity_final", 1.0))
+            city_bias = city_good_bias(city, good_name)
             price = int(
                 base
-                * city_good_bias(city, good_name)
+                * city_bias
                 * sea_factor
-                * (1.0 + drift)
-                * global_price_level
-                * city_macro
-                * good_macro
+                * drift_factor
+                * macro_factor
                 * stock_factor
                 * bankruptcy_factor
             )
-            prices[good_name] = max(6, price)
+            final_price = max(6, price)
+            prices[good_name] = final_price
+            breakdown_by_good[good_name] = {
+                "base_price": float(base),
+                "city_bias": float(city_bias),
+                "sea_factor": float(sea_factor),
+                "macro_factor": float(macro_factor),
+                "scarcity_base": float(scarcity_base),
+                "local_scarcity_relief": float(local_relief),
+                "scarcity_final": float(stock_factor),
+                "drift_factor": float(drift_factor),
+                "bankruptcy_factor": float(bankruptcy_factor),
+                "final_price": float(final_price),
+            }
 
         self._market_cache[cache_key] = prices
+        self._market_breakdown_cache[cache_key] = breakdown_by_good
         return prices
 
     def _init_missions(self, player: Player) -> None:
