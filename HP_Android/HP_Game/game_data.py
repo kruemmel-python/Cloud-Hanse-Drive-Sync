@@ -78,6 +78,14 @@ CITIES = [
     "Novgorod",
 ]
 
+REMOTE_TRADE_REGIONS: Dict[str, Dict[str, int | float | str]] = {
+    "Afrika": {"unlock_century": 15, "distance": 5, "travel_cost": 210, "migration_bonus": 4},
+    "China": {"unlock_century": 16, "distance": 9, "travel_cost": 420, "migration_bonus": 11},
+    "Asien": {"unlock_century": 16, "distance": 8, "travel_cost": 380, "migration_bonus": 9},
+    "Amerika": {"unlock_century": 17, "distance": 10, "travel_cost": 460, "migration_bonus": 14},
+    "Arktis": {"unlock_century": 18, "distance": 7, "travel_cost": 330, "migration_bonus": 7},
+}
+
 
 BASE_GOODS: Dict[str, Dict[str, float]] = {
     "Salz": {"base_price": 40, "volatility": 0.24},
@@ -102,14 +110,23 @@ CENTURY_GOOD_UNLOCKS: Dict[int, Dict[str, Dict[str, float]]] = {
         "Gewuerze": {"base_price": 110, "volatility": 0.30},
         "Kupfer": {"base_price": 92, "volatility": 0.24},
         "Luxuswaren": {"base_price": 148, "volatility": 0.28},
+        "Seide": {"base_price": 146, "volatility": 0.30},
+        "Porzellan": {"base_price": 172, "volatility": 0.26},
+        "Tee": {"base_price": 118, "volatility": 0.22},
+        "Silber": {"base_price": 158, "volatility": 0.27},
     },
     17: {
         "Tabak": {"base_price": 88, "volatility": 0.27},
         "Zucker": {"base_price": 96, "volatility": 0.26},
+        "Kakao": {"base_price": 102, "volatility": 0.25},
+        "Rum": {"base_price": 128, "volatility": 0.24},
+        "Kolonialholz": {"base_price": 86, "volatility": 0.20},
     },
     18: {
         "Kaffee": {"base_price": 104, "volatility": 0.28},
         "Baumwolle": {"base_price": 84, "volatility": 0.22},
+        "Kautschuk": {"base_price": 132, "volatility": 0.26},
+        "Walfett": {"base_price": 116, "volatility": 0.23},
     },
     19: {
         "Kohle": {"base_price": 72, "volatility": 0.21},
@@ -277,6 +294,19 @@ def goods_for_century(century: int) -> Dict[str, Dict[str, float]]:
 
 def goods_for_year(year: int) -> Dict[str, Dict[str, float]]:
     return goods_for_century(year_to_century(year))
+
+
+def remote_regions_for_century(century: int) -> List[str]:
+    century_i = max(1, int(century))
+    return [
+        region_name
+        for region_name, config in REMOTE_TRADE_REGIONS.items()
+        if century_i >= int(config.get("unlock_century", 99))
+    ]
+
+
+def remote_regions_for_year(year: int) -> List[str]:
+    return remote_regions_for_century(year_to_century(year))
 
 
 def goods_unlocked_in_century(century: int) -> List[str]:

@@ -1,96 +1,180 @@
 # HANSE: ATHERIA EDITION - Spielhandbuch
 
-![Titelbild](images/bg_main.webp)
-
-![Logo](images/ship_kogge.webp)
-
-## 0) Patchnotes (Stand 2026-02-27)
-
-**Patch-ID:** `P-2026-02-27`  
-**Dokustand:** `2026-02-27`  
-**Save-Version:** `2` (Legacy-Saves ohne Weltwirtschaftsdaten bleiben ladefaehig)
-
-Enthaltene Erweiterungen:
-
-- **Dynamische Weltwirtschaft:** Physische Stadtinventare pro Ware, echte Marktbestaende.
-- **Produktion:** Rezeptbasierte Betriebe je Stadt (Inputs/Outputs, Level-Skalierung, Aktivstatus, Grundverbrauch).
-- **NPC-Handel:** KI-Haendler mit Arbitrage, die Waren zwischen Staedten bewegen und so Preise indirekt veraendern.
-- **Preislogik erweitert:** Zusaetzlicher `Inventory-Faktor` fuer Knappheit/Ueberfluss je Stadt und Ware.
-- **Jahrhundertwechsel/Freischaltungen:** Neue Waren, Schiffstypen, Titelstufen und Waffenprofile werden automatisch aktiv.
-- **Auto-Aufwertung im Auto-Modus:** Neue Gueter werden automatisch gehandelt; neue Schiffe/Kanonen gemaess aktueller Jahrhundert-Technik genutzt.
-- **Flottenmodernisierung:** Schiffe koennen im Hafen verkauft werden, um auf neue Jahrhundertmodelle umzusteigen.
-- **Mehr Quests:** Acht parallele Langzeitmissionen statt nur der vier Basisziele.
-- **Betriebsinspektion:** Weltwirtschafts-Menue (CLI) und Stadtmarktansicht (pygame) zeigen Betriebsdetails je Stadt.
-- **CSV-Export:** Voller Wirtschafts- und Spielerreport fuer Excel-Auswertung.
-- **Beteiligungsmarkt:** Spieler kann Anteile an staedtischen Betrieben kaufen und passive Rendite erhalten.
-- **Politischer Einfluss & Stadtrettung:** Einfluss pro Stadt steigt durch Investitionen; Rettungsfonds koennen bankrotte Staedte stabilisieren.
-- **Urbanes Zivilisationsmodell:** Jede Stadt simuliert Bevoelkerung, Klassen, Institutionen, Infrastruktur, Steuerkraft, Migration, Stabilitaet und Lebensqualitaet.
-- **Jahrhundert-Adaption der Staedte:** Institutionen und Infrastruktur wachsen stufenweise mit dem Jahrhundert und erzeugen unterschiedliche Metropolen-Profile.
-- **Stiftungs-System:** Investitionen in Akademien/Spitaeler senken lokal dauerhaft Knappheitsdruck und reduzieren Sturm-/Piratenrisiken in diesen Gewaessern.
-- **City Bailout 2.0:** Bei Bankrott kann die Stadt vollstaendig gerettet werden; ein Stifter-Monument erhoeht Rufzuwachs und verdoppelt Lagerkapazitaet.
-- **Betriebsforschung:** Forschungsgelder senken den Inputbedarf der Betriebe bei gleichem Output.
-- **Reise-Infrastruktur:** Investitionen (ab Jahr 2000+) verkuerzen Reisezeiten gemaess Infrastrukturlevel.
-- **Marktstabilisierung:** Investitionen daempfen Preisspruenge und machen Maerkte berechenbarer.
-- **Steueranzeige verbessert:** Steuer-/Migrationswerte werden kompakt (`K/M/B/T`) angezeigt und beim Laden auf sichere Grenzen begrenzt.
-- **Auto-Modus Handelssicherheit:** Die KI priorisiert wieder aktiven Warenhandel (Beladen/Versand) und ersetzt Schiffe nur noch mit ausreichender Reserve.
-- **UI-Lesbarkeit verbessert:** Schiff-Editor-Kanonenliste scrollbar, Betriebsinfos im Stadtpreise-Fenster entzerrt, Spielerinfo scrollbar.
-- **Krankheitsdynamik:** Staedte simulieren Krankheitsdruck, Krankheitsfaelle und medizinische Versorgung (Krankenhaeuser/Aerzte).
-- **Demografie je Jahrhundert:** Geburtenrate und Kindersterblichkeit folgen dem Jahrhundert; in der industriellen/modernen Welt liegt das Familienlimit bei maximal 3 Kindern.
-
-## 1) Titelblatt & Basisdaten
-
-| Feld | Inhalt |
-|---|---|
-| Spielname | **Hanse: Atheria Edition** |
-| Version | **1.0.0** |
-| Plattformen | PC (Windows/Linux via Python + pygame), Android (Buildozer APK) |
-| Entwickler | HANSE_ATHERIA Projektteam |
-| Publisher | ATHERIA Games (Projektlabel) |
-| Copyright | Copyright (c) HANSE_ATHERIA Projekt. Alle Rechte vorbehalten. |
-| Altersfreigabe | Aktuell nicht offiziell USK/PEGI eingestuft |
-
-**Key Art / Cover-Art**
-
-![Key Art](images/bg_setup.webp)
+Dokustand: 2026-02-28  
+Primarer Spielfokus: `HP_Game/pygame_game.py` und `HP_Android/HP_Game/pygame_game.py`
 
 ---
 
-## 2) Einleitung (Intro / Willkommen)
+## 1. Projektstatus
 
-Willkommen in der Welt der Hanse im 14. Jahrhundert.  
-Du fuehrst ein Handelshaus, baust eine Flotte auf, verlaedst Waren, befaehrst die Ost- und Nordsee und behauptest dich gegen Sturm, Piraten und wirtschaftliche Turbulenzen.
+Dieses Repository enthaelt mehrere Projekte. Fuer das Hanse-Spiel sind aktuell diese Teile relevant:
 
-**Genre:** Wirtschafts- und Handelssimulation mit Flottenmanagement  
-**Kernziel:** Vermoegen aufbauen, Missionen abschliessen, Dynastie sichern  
-**Spielerrolle:** Leiter eines hanseatischen Handelshauses
+- `HP_Game/`: Desktop-Version (CLI + pygame)
+- `HP_Android/`: Android-Port der pygame-Version
+- `ATHERIA/`: Makrooekonomie-Zulieferer fuer Live-/Fallback-Metriken
+
+Wichtig:
+
+- Die pygame-Version ist der voll ausgestattete Hauptspielpfad.
+- Die CLI-Version deckt die Kernsimulation ab, aber nicht alle Komfort- und UI-Funktionen der pygame-Version.
+- Die Android-Version folgt funktional der pygame-Version.
 
 ---
 
-## 3) Installation & Systemanforderungen
+## 2. Kernfunktionen des Spiels
 
-### PC - Mindestanforderungen
+### 2.1 Handel und Flotte
 
-- Betriebssystem: Windows 10/11 oder aktuelles Linux
-- CPU: 2 Kerne, ca. 2.0 GHz
-- RAM: 4 GB
-- GPU: OpenGL-faehige Grafikeinheit
-- Speicherplatz: ca. 2 GB inkl. Python/Abhaengigkeiten
-- Runtime: Python 3.11+ empfohlen
+- Handel mit dynamischen Preisen zwischen Hanse-Staedten
+- Stadtlager plus schiffsspezifische Ladung
+- Reparaturen, Schiffbau, Schiffsverkauf und Kanonenaufruestung
+- Individuelle Schiffsnamen, inklusive Auto-Benennung fuer KI- und Auto-Kaeufe
+- Zielpreisvergleich und Preisbindung bei Reisen
 
-### PC - Empfohlene Anforderungen
+### 2.2 Dynamische Weltwirtschaft
 
-- CPU: 4 Kerne, 2.5+ GHz
-- RAM: 8 GB
-- GPU: Dedizierte oder moderne iGPU
-- SSD-Speicher empfohlen
+- Physische Marktinventare pro Stadt und Ware
+- Rezeptbasierte Produktionsbetriebe mit Input/Output, Level und Aktivstatus
+- Monatlicher Welt-Tick fuer Produktion, Grundverbrauch und KI-Handel
+- NPC-Haendler mit echter Arbitrage-Logik
+- Preisbildung mit echter Knappheits-/Ueberflussreaktion
 
-### Android (APK)
+Die Preisformel im Stadtpreise-Fenster ist sichtbar als:
 
-- Android 5.0+ (API 21)
-- ARMv7 oder ARM64
-- 2 GB RAM empfohlen
+`Basispreis x CityBias x Sea x Makro x Inventory/Scarcity x (local_scarcity_relief) x Drift x Bankruptcy`
 
-### Installationsschritte (PC)
+### 2.3 Stadt- und Gesellschaftssimulation
+
+Jede Stadt simuliert heute deutlich mehr als nur einen Markt:
+
+- Bevoelkerung
+- Bevoelkerungskapazitaet
+- soziale Stabilitaet
+- Lebensqualitaet
+- Migration
+- Steuerkraft
+- Infrastruktur
+- Institutionen
+- Krankheitsdruck
+- medizinische Versorgung
+- Bankrottstatus
+
+Im Fenster `Stadtpreise` ist dafuer der Block `Stadtgesundheit & Gesellschaft` vorhanden.
+
+### 2.4 Krankheiten und Medizin
+
+- Krankheitsdruck steigt bei Ueberbevoelkerung, schwacher Versorgung und schlechter Stabilitaet.
+- Krankenhaeuser, Aerzte und Sanitaerstrukturen wirken direkt auf Stadtgesundheit und Kinderueberleben.
+- In spaeteren Jahrhunderten sinkt die Kindersterblichkeit, waehrend die maximale Kinderzahl sinkt.
+- Kritische Staedte koennen gezielt ueber `Stiftung` verbessert werden.
+
+### 2.5 Beteiligungen, Einfluss und Stadtrettung
+
+- Pro Betrieb koennen Anteile gekauft werden.
+- Daraus entstehen monatliche passive Renditen.
+- Der Spieler baut stadtbezogenen politischen Einfluss auf.
+- Bankrotte Staedte koennen mit `Stadt retten` stabilisiert werden.
+- Sozial-, Forschungs- und Infrastrukturinvestitionen wirken systemisch auf die Welt.
+
+### 2.6 Fernhandel / neue Weltregionen
+
+Die pygame- und Android-Version enthalten zusaetzliche Fernhandelszonen.
+
+Aktuelle Fernziele:
+
+- `Afrika`
+- `China`
+- `Asien`
+- `Amerika`
+- `Arktis`
+
+Diese Zonen:
+
+- werden nach Jahrhunderten freigeschaltet
+- besitzen eigene Inventare und Produktionsprofile
+- liefern neue Fernwaren
+- sind in `Schiffsladung` als Reiseziele waehlbar
+- sind im Fenster `Stadtpreise` wie normale Handelsknoten einsehbar
+
+Typische neue Waren:
+
+- `Seide`
+- `Porzellan`
+- `Tee`
+- `Silber`
+- `Kakao`
+- `Rum`
+- `Kolonialholz`
+- `Kautschuk`
+- `Walfett`
+
+Hinweis:
+
+- In Fernhandelszonen koennen keine lokalen Stadtanteile gekauft und keine Bailouts ausgefuehrt werden.
+- Diese Knoten sind im Stadtpreise-Fenster sichtbar markiert.
+
+---
+
+## 3. Spielversionen im Projekt
+
+### 3.1 Desktop pygame (empfohlen)
+
+Dateien:
+
+- `HP_Game/main_pygame.py`
+- `HP_Game/pygame_game.py`
+
+Diese Version enthaelt die vollstaendige Haupt-UI:
+
+- Markt
+- Flotte
+- Schiffsladung
+- Schiff-Editor
+- Stadtpreise
+- Missionen
+- Spielerinfo
+- Save-/Load-Menue
+- Einstellungen
+- Auto-Policy
+- CSV-Export
+
+### 3.2 Android
+
+Dateien:
+
+- `HP_Android/main.py`
+- `HP_Android/HP_Game/pygame_game.py`
+
+Die Android-Version spiegelt die pygame-Spielmechanik und verwendet dieselben Datenmodelle.
+
+Zusaetzlich wichtig:
+
+- Bei fehlender externer ATHERIA-Runtime greift automatisch `ATHERIA mobil`.
+- Die Musikdatei `Hanse_Atheria.opus` ist auch im Android-Spielpfad vorhanden.
+
+### 3.3 CLI
+
+Dateien:
+
+- `HP_Game/main.py`
+- `HP_Game/game.py`
+
+Die CLI-Version bleibt der textbasierte Kernpfad fuer:
+
+- Mehrspieler-Runden (1 bis 6 lokal)
+- Grundhandel
+- Reisen
+- Flottenmanagement
+- Missionen
+- Save/Load
+
+Nicht alle modernen Komfortfenster der pygame-Version existieren dort in identischer Form.
+
+---
+
+## 4. Start und Installation
+
+### 4.1 Desktop
 
 ```bash
 python -m venv .venv
@@ -104,540 +188,236 @@ pip install -r requirements.txt
 python HP_Game/main_pygame.py
 ```
 
-### Installationsschritte (Android Build)
+### 4.2 CLI direkt starten
 
-Siehe Build-Anleitung in `HP_Android/README.md`.
+```bash
+python HP_Game/main.py
+```
 
-### Troubleshooting
+### 4.3 Android Build
 
-- `ModuleNotFoundError: pygame`  
-  Loesung: `pip install -r HP_Game/requirements-pygame.txt`
-- Schwarzer Bildschirm / Startproblem auf Android  
-  Loesung: APK fuer passende Architektur bauen (`arm64-v8a`, `armeabi-v7a`)
-- ATHERIA-Runtime nicht gefunden  
-  Loesung: Spiel laeuft im Fallback-Modell weiter; optional `HP_GAME_ATHERIA_ROOT` setzen
+Siehe `HP_Android/README.md`.
 
 ---
 
-## 4) Steuerung (Controls)
+## 5. Steuerung und wichtige Bedienung
 
-### Tastatur (global)
+### 5.1 Hotkeys
 
-| Aktion | Taste |
-|---|---|
-| Menues schliessen / Zurueck | `ESC` (Android: Back-Key) |
-| Menge erhoehen | `+` / `=` / Numpad `+` |
-| Menge verringern | `-` / Numpad `-` |
-| Slot speichern | `F5` |
-| Slot laden | `F9` |
-| CSV-Report exportieren (pygame) | `F6` |
+- `F5`: aktuellen Slot speichern
+- `F9`: ausgewaehlten Slot laden
+- `F6`: CSV-Export
+- `ESC`: Fenster schliessen / zurueck
+- `Enter`: Texteingaben bestaetigen
+- `Backspace`: Texteingaben loeschen
 
-### Texteingabe
+### 5.2 Scrollbare Bereiche in pygame / Android
 
-| Aktion | Taste |
-|---|---|
-| Bestaetigen (Setup / Name / Cheat) | `Enter` |
-| Zeichen loeschen | `Backspace` |
-| Cheat-Konsole oeffnen | `|` |
-| Cheat-Code | `HANSE` |
+Folgende Bereiche sind aktuell scrollbar:
 
-### Maus / Touch
+- Marktliste
+- Flottenliste
+- Schiffsladung: Zielorte
+- Schiff-Editor: Kanonenliste
+- Stadtpreise: Ortsliste
+- Stadtpreise: Warenliste
+- Stadtpreise: Betriebsliste
+- Stadtpreise: Preisanalyse
+- Spielerinfo
 
-| Aktion | Eingabe |
-|---|---|
-| Buttons / Listen auswaehlen | Linksklick / Touch-Tap |
-| Scroll in Marktliste | Mausrad / Pfeile `^` `v` im Marktkopf |
-| Scroll in Flottenliste | Mausrad / Touch-Drag im Flottenpanel / Pfeile `^` `v` |
-| Warentransfer im Lademenue | Drag auf Slider |
-| Spielerprofil oeffnen | Button `Info` im Hauptbildschirm |
+Das funktioniert je nach Bereich ueber:
 
-### Android-Spezifika
+- Mausrad
+- Touch-Scroll
+- `^` / `v` Buttons
 
-- On-Screen-Tastatur wird automatisch bei aktiver Texteingabe geoeffnet.
-- Ohne aktive Tastatur nutzt die Spielansicht den verfuegbaren Bildschirm wieder voll aus.
-- Flottenliste ist fuer Touch-Drag optimiert; alternativ stehen Scroll-Pfeile im Flottenkopf bereit.
-- Marktliste ist ebenfalls per Scroll-Pfeilen bedienbar, damit auch viele Waren im Jahrhundertwechsel erreichbar bleiben.
-- Bei fehlendem externem ATHERIA-Runtime-Aufruf wird auf Android automatisch **ATHERIA mobil** statt Fallback-Modell genutzt.
-- Menue-Button **Beenden** beendet die App sauber per `SystemExit`.
+### 5.3 Schiffsladung
+
+Im Fenster `Schiffsladung` kann der Spieler:
+
+- Waren zwischen Stadtlager und Schiff verschieben
+- Ziele fuer Reisen waehlen
+- sowohl Hanse-Staedte als auch freigeschaltete Fernhandelszonen ansteuern
 
 ---
 
-## 5) Spielmechaniken (Core Systems)
+## 6. Wichtige Fenster in der pygame-/Android-Version
 
-![Markt-Hintergrund](images/bg_market.webp)
+### 6.1 Hauptbildschirm
 
-### 5.1 Zeitmodell und Tick-Reihenfolge
+Der Hauptbildschirm zeigt:
 
-Das Spiel arbeitet im **Monatsrhythmus**. Ein Monatswechsel ist nicht nur ein Kalenderupdate, sondern ein kompletter Simulationsschritt:
+- Datum und Seezustand
+- Spielername, Geld, Schulden, Gesamtwert
+- aktives Schiff inkl. ETA
+- ATHERIA-Werte
+- Weltzeile mit Produktion, NPC-Deals, Bankrott, Steuern, Migration, Einfluss
+- Marktpanel
+- Flottenpanel
+- Aktionspanel
+- Auto-Policy-Leiste
+- Chronik / Meldungen
 
-1. Neuer Seezustand und ATHERIA-Refresh fuer den Monat
-2. Weltwirtschafts-Tick: Produktion in allen Staedten (Betriebe + Grundverbrauch)
-3. NPC-Haendler-Tick: Arbitrage-Kaeufe/Reisen/Verkaeufe zwischen Staedten
-4. Spielerphase (Handel/Flotte/Menues)
-5. Laufende Kosten, Finanzlogik, Missions-/Titel-Update und Monatsinkrement
+### 6.2 Stadtpreise
 
-Dadurch entsteht ein klarer Spielpuls: **Planen -> Ausfuehren -> Risiko -> Auswertung**.
+Das Fenster `Stadtpreise` ist heute das wichtigste Analysefenster fuer Oekonomie:
 
-### 5.1.1 Produktionssystem und Stadtinventare
+- Auswahl aller sichtbaren Staedte und Fernhandelszonen
+- Preise und Bestandswerte pro Ware
+- vollstaendige Preisanalyse pro ausgewaehlter Ware
+- Betriebsliste der gewaehlten Stadt
+- Anzeige von Stadtgesundheit, Migration, Steuerkraft und Bankrott
+- Schnellaktionen fuer Anteilskauf, Stiftung, Forschung, Reise-Infrastruktur, Marktstabilisierung und Stadtrettung
 
-Jede Stadt besitzt eine eigene Weltwirtschaft mit:
+### 6.3 Einstellungen
 
-- physischem `inventory` pro Ware
-- Produktionsbetrieben (`buildings`) mit `level` und `active`
-- optionaler `treasury` fuer laufende Kosten
+Im Einstellungsfenster kann der Spieler aktuell steuern:
 
-Produktionslogik pro Monat:
+- Sprache: `Deutsch` / `Englisch`
+- Hintergrundmusik: `An` / `Aus`
+- Musiklautstaerke
 
-1. Für jedes aktive Gebaeude werden die Inputwaren geprueft.
-2. Sind Inputs vorhanden, werden sie verbraucht und Outputs erzeugt.
-3. Inputs/Outputs skalieren linear mit dem Gebaeude-Level.
-4. Fehlen Inputs, pausiert das Gebaeude in diesem Monat.
+Die Sprache betrifft die sichtbare UI der pygame-/Android-Version.  
+Die Einstellungen werden in `ui_settings.json` gespeichert.
 
-Zusätzlich gibt es einen kleinen stadtweiten Grundverbrauch fuer Basiswaren (`Getreide`, `Salz`, `Hering`), damit Maerkte nicht statisch bleiben.
+### 6.4 Save-Menue
 
-Beispiele fuer Startbetriebe:
+Das Save-Menue bietet:
 
-- Luebeck: Brauerei (u. a. Produktion von **Bier**)
-- Bergen: Holzfaeller
-- Riga/Novgorod: Salzmine
+- 6 Save-Slots
+- Slot-Ueberschreiben
+- Laden aus dem aktiven Slot
+- `Info`-Button mit Spielinformationen
 
-Aktive Standardrezepte:
+Angezeigte Spielinformationen:
 
-- **Brauerei:** Getreide + Holz -> Bier
-- **Salzmine:** -> Salz
-- **Holzfaeller:** -> Holz
-- **Fischerei:** -> Hering
-- **Getreidehof:** -> Getreide
-- **Weinkellerei:** Getreide -> Wein
-- **Weberei:** Holz -> Tuch
-- **Gerberei:** Salz -> Pelze
-
-Jahrhundert-Freischaltungen (zusätzliche Betriebe):
-
-- **15. Jh.:** Hopfenplantage, Teerbrennerei, Grossbrauerei
-- **16. Jh.:** Gewuerzhandel, Kupfermine, Gewuerzraffinerie
-- **17. Jh.:** Tabakplantage, Zuckerplantage, Zuckerraffinerie
-- **18. Jh.:** Kaffeeplantage, Baumwollfarm, Textilmanufaktur
-- **19. Jh.:** Kohlemine, Stahlwerk, Raffinerie
-- **20. Jh.:** Elektronikfabrik
-- **21. Jh.:** Seltene Erden Mine, Chipfabrik
-
-Jede Stadt startet deterministisch mit **mindestens vier Betrieben**, Kernstaedte mit hoeheren Levels.
-
-Dadurch entsteht reale Warenstroemung ohne Spieleraktion: Produktion fuellt Maerkte, Handel leert Maerkte.
-
-### 5.1.2 Krankheiten, Krankenhaeuser und Aerzte
-
-- Jede Stadt berechnet monatlich einen **Krankheitsdruck** aus Jahrhundert, Versorgungslage und Stabilitaet.
-- **Krankenhaeuser** und **Aerzte** senken den Krankheitsdruck, verbessern die Kinder-Ueberlebensrate und stabilisieren Wachstum/Steuerkraft.
-- Mit zunehmenden Jahrhunderten sinken Krankheitsdruck und Kindersterblichkeit deutlich.
-- Demografieregel: Im industriellen/modernen Zeitalter (`ab 19. Jahrhundert`) liegt das Familienlimit bei **maximal 3 Kindern**.
-- In fruehen Jahrhunderten sind groessere Familien moeglich, aber Krankheitsereignisse koennen Kinderverluste verursachen.
-
-### 5.2 Markt- und Preisbildung
-
-Die Preise werden pro Stadt, Ware und Monat dynamisch berechnet. Die Kernformel lautet:
-
-`Preis = Basispreis * Stadt-Bias * See-Faktor * (1 + Drift) * Globales Preisniveau * Stadt-Faktor * Waren-Faktor * Inventory-Faktor`
-
-- `Basispreis`: statischer Grundwert pro Ware
-- `Stadt-Bias`: strukturelles Stadtprofil (z. B. Holz guenstig in Nord-/Osthaefen)
-- `See-Faktor`: aktueller Zustand (`stille See` bis `tobende See`)
-- `Drift`: Zufall im Bereich der Waren-Volatilitaet
-- `Globales Preisniveau`, `Stadt-Faktor`, `Waren-Faktor`: Makroeinfluss aus ATHERIA
-- `Inventory-Faktor`: lokaler Knappheits-/Ueberflussfaktor aus dem realen Stadtbestand
-- Untergrenze: Ein Preis faellt nie unter 6 Mark
-
-Die Stadtbestaende sind physisch: Produktion, NPC-Handel und Spielerhandel veraendern denselben Warenpool.
-
-### 5.3 Lager-, Verlade- und Preisbindungs-System
-
-Das Handelshaus besitzt **stadtbezogene Lager**. Schiffe sind davon getrennt:
-
-- Markt-Kauf geht zuerst immer ins Stadtlager
-- Verkauf erfolgt aus dem Stadtlager
-- Verladen verschiebt Mengen aus dem Lager in den Schiffsraum
-- Beim Kauf sinkt der physische Stadtmarktbestand, beim Verkauf steigt er
-
-Wichtiger Spezialfall: **Preisbindung bei Reisebeginn**  
-Wenn ein Schiff mit Ladung auslaeuft, werden Zielortpreise je Ware als gebundene Lots gespeichert.
-
-- Bei Ankunft und Entladen bleibt diese Bindung erhalten
-- Beim Verkauf werden zuerst gebundene Lots verbraucht, danach aktueller Spot-Marktpreis
-
-Das erlaubt strategisches Hedging gegen spaetere Marktschwankungen.
-
-### 5.4 Reisen, ETA und Flottenzustand
-
-- Jedes Schiff reist separat (`is_at_sea`, `destination`, `travel_turns_left`)
-- Reisezeit in Monaten basiert auf Distanz zwischen Staedten
-- Reisekosten wachsen mit Distanz
-- Der aktive Status zeigt Ort, ETA und letzte Ereignismeldung
-
-Eine Flotte kann parallel:
-
-- im Hafen handeln/reparieren
-- auf See in unterschiedlichen Zielkorridoren unterwegs sein
-
-### 5.5 Seerisiko, Kampf und Schadensmodell
-
-![See](images/bg_sea.webp)
-![Wilde See](images/bg_sea_wild.webp)
-
-Sturm- und Kaperlogik sind seezustandsabhaengig.
-
-- Sturmchance steigt mit rauer See
-- Sturmschaden trifft Rumpf und Takelage separat
-- Piratenchance wird durch Kanonen reduziert
-
-Piratenformel:
-
-`Chance_verlust = Risiko_See / (1 + Kanonen * 0.5)`
-
-Effekte eines Angriffs:
-
-- Warenverlust einzelner Gueter
-- Reputationsverlust (durch Bewaffnung abgefedert)
-- Eventlog in Chronik und Schiffsstatus
-
-### 5.6 Schiffbau, Wartung und Bewaffnung
-
-![Kanone](images/icon_cannon.webp)
-
-Verfuegbare Schiffstypen:
-
-- **Grosse Kogge**: fruehes Ausbau-Schiff
-- **Holk**: mittleres Transportprofil
-- **Kraier**: hohes Endgame-Laderaumprofil
-
-Weitere Regeln:
-
-- Schiffe koennen individuell benannt werden
-- Reparaturen erfolgen prozentual (Rumpf/Takelage)
-- Kanonen sind stueckweise kaufbar und beeinflussen Risiko direkt
-
-### 5.7 Finanzsystem, Schulden und Fortschritt
-
-Monatliche Kosten:
-
-- Heuer skaliert mit Flottenkapazitaet und Wirtschaftslage
-- Schulden wachsen ueber monatlich abgeleiteten Zins
-- Automatische Tilgung greift bei guter Liquiditaet
-
-Kritische Schwelle:
-
-- Hohe Schulden koennen zu Schuldturm-Runden fuehren
-- Im Schuldturm sind zentrale Aktionen blockiert
-
-Progressionsanker:
-
-- Netto-Wert (Liquiditaet + Waren + Flotte - Schulden + Rufanteil)
-- Titelaufstieg ueber Jahrhunderte mit zeitlicher Begrenzung pro Stufe
-
-### 5.8 ATHERIA-Makrosystem
-
-ATHERIA beeinflusst den Markt als Metaebene:
-
-- `global_growth` (Wachstum)
-- `global_price_level` (Preisniveau)
-- `resource_scarcity` (Knappheit)
-- zusaetzliche Stadt- und Warenfaktoren
-
-Runtime-Verhalten:
-
-- **PC/Notebook**: Es wird zuerst ein Live-Aufruf gegen die ATHERIA-Runtime versucht.
-- **Android**: Falls kein externer Runtime-Aufruf verfuegbar ist, nutzt das Spiel automatisch ein eingebettetes **ATHERIA mobil**-Profil.
-- Ohne gueltige ATHERIA-Daten nutzt die Simulation weiterhin ein robustes Fallback-Modell.
-
-### 5.9 Missionen und Endgame-Anreize
-
-Die Langzeitziele verknuepfen Handel, Flotte, Makrooekonomie und Dynastie:
-
-- **Hanse-Privileg**: Lieferauftrag mit Frist in Knappheitsphasen; Reward: Stadtbonus
-- **Architekt der Synergie**: Flottenkomposition + Zustand; Reward: Heuer-Reduktion
-- **Atheria-Resonanz**: Netto-Wert-Skalierung in Rezession; Reward: Prestige/Meilenstein
-- **Familiendynastie**: Familien- und Kapitalziel; Reward: Erbfortfuehrung statt hartem Reset
-- **Braumeisterbund**: Bier-Absatzauftrag ueber mehrere Maerkte
-- **Nordholz-Vertrag**: Holz-Volumenquest fuer Langstreckenhandel
-- **Routenmeister**: Mindestens 6 verschiedene Staedte aktiv anlaufen
-- **Arsenal der Hanse**: Flotte auf Zielzahl bei Schiffen und Kanonen ausbauen
-- **Betriebskampagnen:** Fuer **jeden** Betrieb gibt es **8 Queststufen** (verkaufsbasiert auf Outputware, mit Staffel-Rewards)
-
-### 5.10 Auto-Modus (Atheria-Autopilot)
-
-Der `Auto`-Button uebergibt die Kontrolle an Atheria:
-
-- automatischer Handel (Einkauf, Verkauf, Verladen)
-- automatische Routenwahl mit Zielpreis-/Margenlogik
-- Schiffbau, Reparaturen und Kanonen-Upgrades
-- Monatsfortschritt ohne manuellen Eingriff
-- Heiratsanfragen erscheinen auch im Auto-Modus als Popup und werden nach kurzer Anzeigedauer beantwortet
-- Progression ist bewusst gebremst (Trade-Budget-Anteil, Schiffbau-Cooldown, Titel-Monatsgating)
-- Mit Jahrhundertwechseln nutzt der Auto-Modus automatisch neue Handelsgueter, neue Schiffstypen und neue Waffentechnologien
-- Kanonenkaeufe orientieren sich dynamisch am aktiven Waffenprofil des aktuellen Jahrhunderts (Kosten/Wirkung)
-
-Wichtig: Der Auto-Modus ist ein Autopilot, aber kein Unsterblichkeitsmodus.  
-Das Handelshaus kann auch im Auto-Betrieb enden.
-
-Hauefigste Ursachen fuer `Handelshaus erloschen` im Auto-Modus:
-
-1. **Tod des Vorfahren (Altersevent)**  
-   Ab Alter > 60 wird jaehrlich ein Todeswurf gemacht.  
-   Gibt es dann **kein Kind** und **keine gesicherte Dynastie-Nachfolge** (Mission *Familiendynastie*), endet das Handelshaus sofort.
-2. **Kompletter Flottenverlust**  
-   Wenn alle Schiffe verloren gehen und kein Ersatzschiff gestellt werden kann, endet das Handelshaus.
-3. **Auto-Stop nach Verlustzustand**  
-   Sobald `alive = False`, beendet sich der Auto-Modus mit Logzeile wie `Auto-Modus beendet: Handelshaus erloschen.`
-
-Wie verhindert man das:
-
-- frueh heiraten/Kind bekommen (Nachfolge absichern)
-- Button `Nachkommen zeugen` im Hauptfenster nutzen (erstellt sofort ein Kind, wenn verheiratet)
-- Mission **Familiendynastie** abschliessen (Erbe mit Startkapital)
-- Flotte regelmaessig reparieren und nicht dauerhaft in Hochrisiko-Seezustaenden ueberdehnen
-
-### 5.11 Jahrhundertwechsel, Freischaltungen und automatische Aufwertung
-
-Mit jedem neuen Jahrhundert erweitert sich die Spielwelt automatisch:
-
-- neue Waren werden freigeschaltet und in Markt, Lager, Produktion und Preisbildung integriert
-- neue Schiffstypen werden in der Werft verfuegbar
-- neue Titelstufen werden aktiv
-- das Waffenprofil (Kanonenname, Kosten, Wirkung, Limits) steigt auf die jeweilige Technikstufe
-
-Automatisches Verhalten:
-
-- Der Auto-Modus handelt neue Waren ohne Extra-Konfiguration, sobald sie verfuegbar sind.
-- Beim Schiffbau greift er auf das aktuell freigeschaltete Werftangebot zu.
-- Bei Wartung/Aufruestung kauft er Kanonen auf Basis der aktiven Jahrhundert-Technik.
-- Die Werft zeigt pro Jahrhundert nur aktuelle Schiffsmodelle; veraltete Modelle sind nicht mehr kaufbar.
-- Im Schiff-Editor lassen sich Kanonenstufen (alt bis neu) waehlen und gezielt montieren.
-
-Manuelles Ersetzen alter Schiffe:
-
-- Alte Schiffe koennen im Hafen verkauft werden (nicht auf See, nicht beladen, letztes Schiff ist gesperrt).
-- So lassen sich Flotten gezielt gegen neue Jahrhundertmodelle austauschen.
-
-### 5.12 Anteilssystem, passive Rendite und Stadtrettung
-
-Die Weltwirtschaft besitzt einen zusaetzlichen **Beteiligungsmarkt** pro Stadt und Betrieb.
-
-- Anteilskauf erfolgt je Betrieb in Prozentpunkten (z. B. +5%).
-- Der Anteilskurs wird aus Rezeptwert (Input/Output), Gebaeudelevel und Technologieepoche abgeleitet.
-- Ein Teil des Kaufpreises fliesst direkt in die Stadtkasse.
-
-Passive Rendite:
-
-- Bei laufender Produktion entsteht je Betrieb ein monatlicher **Dividendenpool**.
-- Deine Auszahlung ergibt sich aus `Dividendenpool * Anteil%`.
-- Auszahlungen sind durch die reale Stadtkasse gedeckelt (keine unendliche Geldquelle).
-
-Politischer Einfluss:
-
-- Anteilskauf und Dividenden steigern den stadtbezogenen Einflusswert.
-- Einfluss ist stadtlokal und wird im Status/Weltwirtschaftsfenster angezeigt.
-
-Stadtrettung bei Bankrott:
-
-- Unterhalb eines kritischen Kassenwerts gilt eine Stadt als bankrottgefaehrdet.
-- In diesem Zustand laufen Betriebe gedrosselt und Preise erhalten einen Krisenaufschlag.
-- Mit ausreichendem Einfluss kann der Spieler einen **Rettungsfonds** einzahlen.
-- Die Einzahlung hebt die Stadtkasse direkt an (mit Einflussbonus) und kann die Stadt wieder stabilisieren.
-
-Bedienung:
-
-- **CLI:** `Weltwirtschaft` -> Stadt waehlen -> `Anteile kaufen` / `Rettungsfonds`.
-- **pygame:** `Stadtpreise`-Fenster -> Betrieb waehlen -> `+5% Anteil` bzw. `Rettung 1000`.
+- Spielname
+- Webseite: `https://github.com/kruemmel-python/Cloud-Hanse-Drive-Sync`
+- Entwickler: `Ralf Kruemmel`
 
 ---
 
-## 6) UI-Erklaerung (Interface Guide)
+## 7. Auto-Modus und Automatisierung
 
-![UI-Struktur](images/panel_stripe.webp)
+Der Auto-Modus ist kein reiner Demo-Schalter. Er spielt aktiv fuer den Spieler.
 
-Die Hauptoberflaeche besteht aus vier Kernbereichen:
+Er uebernimmt:
 
-1. **Top-Statusleiste**  
-   ANNO/Monat, Seezustand, Spielerwerte, aktives Schiff, ATHERIA-Kennzahlen.
-   Steuer-/Migrationswerte in der Weltzeile werden zur Lesbarkeit kompakt als `K/M/B/T` dargestellt.
-2. **Marktpanel (links)**  
-   Warenliste mit Preis, Lagerbestand und Zielpreisvorschau; Scroll per Mausrad oder `^`/`v`.
-3. **Flottenpanel (mitte)**  
-   Alle Schiffe, Standort, Ladung, Zustand, Kanonen; Scroll per Touch-Drag, Mausrad oder `^`/`v`.
-4. **Aktionspanel (rechts)**  
-   Kaufen/Verkaufen, Menge, Ladung, Schiffbau, Editor, Reparaturen, Monatswechsel, `Auto`, `Info`, Save/Load.
+- Einkauf und Verkauf
+- Verladen
+- Routenwahl
+- Schiffskauf
+- Schiffsersatz / Modernisierung
+- Kanonenaufruestung
+- Investitionen
+- Beteiligungskauf (je nach Policy)
 
-Zusatzfenster:
+### 7.1 Auto-Policy
 
-- **Stadtpreise**: Preise jeder Stadt im aktuellen Monat
-- **Missionen**: Fortschritt aller Langzeitziele
-- **Info**: Gesamtstatus des Spielers (Titel, Familie, Finanzen, Flotte, Missionen), inkl. Scroll
-- **Schiffsladung**: Transfer Lager <-> Schiff + Reiseziel
-- **Schiff-Editor**: Name + Kanonenkauf, inkl. scrollbarer Kanonenliste
-- **Weltwirtschaft (CLI)**: Pro Stadt Betriebsliste inkl. Inputs/Outputs, Aktivstatus und Laufbarkeit
-- **CSV-Export**: Vollreport ueber Stadtinventare, Betriebe, NPCs, Missionen und Flotte
+Die aktuelle Auto-Policy ist im Hauptbildschirm einstellbar:
 
-![Chronik-Texture](images/paper_texture_chronik.webp)
-![Transfer-Texture](images/paper_texture_transfer.webp)
+- Risiko
+- Reserve in Mark
+- Investitionsstil
+- Fokus-Staedte
 
----
+### 7.2 Wichtige Grenze des Auto-Modus
 
-## 7) Charaktere / Fraktionen
+Der Auto-Modus ist bewusst nicht unsterblich.
 
-Die Spielwelt arbeitet weniger mit statischen Quest-NPCs und mehr mit **systemischen Fraktionen**, die dauerhaft auf deine Entscheidungen reagieren.
+Das Handelshaus kann enden durch:
 
-### 7.1 Das eigene Handelshaus (Spielerfraktion)
+- Tod des Vorfahren ohne gesicherte Nachfolge
+- kompletten Flottenverlust
+- fehlende Liquiditaet im kritischen Moment
 
-Rolle:
-
-- Oekonomischer Kernakteur mit Flotte, Lager, Ruf, Schulden und Dynastie
-
-Mechanischer Einfluss:
-
-- Trifft alle Handels- und Reiseentscheidungen
-- Definiert Risikoappetit (hohe Margen vs. sichere Routen)
-- Formt den Langzeitverlauf ueber Missionen und Titel
-
-Strategische Bedeutung:
-
-- Liquiditaet, Ruf und Schiffszustand sind die drei kritischen Stabilitaetsachsen
-
-### 7.2 Hanse-Staedte und Stadtraete
-
-Rolle:
-
-- Regionale Machtzentren mit eigenen Marktprofilen und Versorgungsinteressen
-
-Mechanischer Einfluss:
-
-- Stadt-Bias praegt Preise je Ware
-- Missionen wie das Hanse-Privileg entstehen aus lokaler Knappheit
-- Stadtlager erzwingen ortsgebundenes Logistikdenken
-
-Strategische Bedeutung:
-
-- Jede Stadt ist ein eigener Profit- und Risiko-Knoten
-- Heimathafen-Strategien lohnen sich durch wiederkehrende Boni und kurze Logistikwege
-
-### 7.3 Hafenmeister, Werften und Versorgungskontore
-
-Rolle:
-
-- Maritime Infrastrukturfraktion fuer Instandhaltung und Flottenwachstum
-
-Mechanischer Einfluss:
-
-- Schiffskauf, Reparatur und Kanonenaufruestung nur im Hafen
-- Beschraenkt durch Liquiditaet und Standort des jeweiligen Schiffs
-
-Strategische Bedeutung:
-
-- Werften bestimmen die Skalierungsgeschwindigkeit
-- Zu spaete Wartung fuehrt zu ueberproportionalem Totalverlustrisiko
-
-### 7.4 Kaperverbaende und Piratenkartelle
-
-Rolle:
-
-- Gegenspieler auf See, die Handelsrouten destabilisieren
-
-Mechanischer Einfluss:
-
-- Warenverluste auf Reisen
-- Reputationsschaden bei erfolgreichen Kaperungen
-- Direkte Kopplung an Seezustand und Bewaffnung
-
-Strategische Bedeutung:
-
-- Erzwingen Sicherheitsinvestitionen (Kanonen, Risikostreuung, Routenwahl)
-- Bestrafen ueberladene Einzelschiffe ohne Eskorte/Defensive
-
-### 7.5 Die ATHERIA-Wirtschaftskraefte
-
-Rolle:
-
-- Uebergeordnete Makrofraktion, die Konjunktur und Knappheit treibt
-
-Mechanischer Einfluss:
-
-- Veraendert Margen, Kaufkraft, Kosten und Risiko indirekt in jedem Monat
-- Triggert bestimmte Missionsfenster (z. B. Rezessionsziele)
-
-Strategische Bedeutung:
-
-- Erfolgreiche Spieler spielen nicht gegen einzelne Preise, sondern gegen den Zyklus
-- Rezession und Knappheit sind keine reine Strafe, sondern Gelegenheitsfenster
-
-### 7.6 Familie und Dynastie
-
-Rolle:
-
-- Soziale Kontinuitaetsfraktion des Handelshauses
-
-Mechanischer Einfluss:
-
-- Lebensereignisse (Ehe, Kinder, Tod)
-- Dynastie-Mission kann den Spielabbruch in einen Nachfolge-Start ueberfuehren
-
-Strategische Bedeutung:
-
-- Verbindet Midgame-Wohlstand mit Endgame-Sicherheit
-- Belohnt langfristige Planung statt reiner Kurzfristmaximierung
+Dafuer gibt es den Button `Nachkommen zeugen`, um Nachfolge aktiv abzusichern.
 
 ---
 
-## 8) Spielmodi
+## 8. Speichern, Laden und Jahres-Autosave
 
-- **Pygame Edition**: Grafischer Einzelspieler mit Vollfunktion.
-- **CLI Edition**: Konsolenversion mit 1-6 Spielern (lokale Runden).
-- **Save/Load**: 6 Save-Slots mit Zeitstempel und Kurzzusammenfassung.
+- Das Spiel nutzt 6 Slots in `HP_Game/saves/slot_01.json` bis `slot_06.json`.
+- Legacy-Saves bleiben ladefaehig.
+- Das Spiel speichert zusaetzlich automatisch bei jedem Jahreswechsel in den aktuell aktiven Slot.
+- Der aktive Slot wird dabei ueberschrieben.
 
-Siegbedingung im klassischen Sinn ist offen gestaltet:  
-Ziel ist der nachhaltige Aufstieg (Vermoegen, Titel, Flotte, Missionen, Dynastie).
+Enthalten im Save:
 
----
-
-## 9) Tipps & Strategien
-
-- Kaufe frueh guenstige Grundwaren, verteile Risiken auf mehrere Schiffe.
-- Halte immer Reparaturbudget bereit; Null-Rumpf bedeutet Schiffsverlust.
-- Kanonen lohnen sich auf stark frequentierten Routen mit wertvoller Ladung.
-- Nutze Stadtpreise und Zielpreisvorschau vor jeder Reise.
-- Spiele Missionen aktiv an: Rabatt und Heuerbonus skalieren stark im Mid-/Late-Game.
-- Ueberziehe den Kredit nicht dauerhaft, Schuldturm blockiert kritische Aktionen.
+- Spielerstatus
+- Weltwirtschaft
+- NPCs
+- ATHERIA-Zustand
+- Investitionswerte
+- UI-Sprache
+- Musikstatus und Lautstaerke
 
 ---
 
-## 10) Glossar
+## 9. CSV-Export
 
-- **ANNO**: Jahres-/Monatsanzeige des Spielfortschritts.
-- **Ladung**: Aktuelle Warenmenge im Schiff.
-- **Takelage**: Zustand von Mast/Segel (beeinflusst Seetauglichkeit).
-- **Kaperangriff**: Piratenereignis mit Warenverlust.
-- **Knappheit**: ATHERIA-Indikator fuer Ressourcenengpaesse.
-- **Netto-Wert**: Geld + Warenwert + Flottenwert - Schulden + Rufanteil.
-- **Heuer**: Laufende monatliche Flotten-/Crew-Kosten.
+Der CSV-Export ist fuer externe Auswertung gedacht.
 
----
+Enthalten sind je nach Spielstand unter anderem:
 
-## 11) Rechtliches
+- Staedte und Fernhandelszonen
+- Preise und Inventare
+- Betriebe und Status
+- Spielerwerte
+- Schiffe
+- Missionen
+- Investitionswirkung
 
-- Dieses Handbuch und das Spielmaterial sind urheberrechtlich geschuetzt.
-- Marken- und Namensrechte verbleiben bei den jeweiligen Rechteinhabern.
-- Drittanbieter-Komponenten (u. a. Python, pygame/SDL, numpy, torch) unterliegen ihren jeweiligen Lizenzen.
-- Lizenzdatei des Projekts: `LICENSE` im Repository-Stamm.
+Auf Desktop liegt der Export im Save-Bereich.  
+Auf Android wird der Export in den Download-Ordner geschrieben.
 
 ---
 
-## Anhang: Bildverzeichnis (eingesetzte Assets)
+## 10. ATHERIA-Anbindung
 
-- `images/bg_main.webp`
-- `images/bg_setup.webp`
-- `images/bg_market.webp`
-- `images/bg_sea.webp`
-- `images/bg_sea_wild.webp`
-- `images/ship_kogge.webp`
-- `images/icon_cannon.webp`
-- `images/panel_stripe.webp`
-- `images/paper_texture_chronik.webp`
-- `images/paper_texture_transfer.webp`
+Die Wirtschaft wird durch `HP_Game/atheria_economy.py` erweitert.
+
+Zwei Modi sind moeglich:
+
+- Live-Anbindung an `ATHERIA/main.py`
+- robuster Fallback / mobiler ATHERIA-Modus
+
+Dadurch beeinflusst ATHERIA unter anderem:
+
+- Wachstum
+- Preisniveau
+- Knappheit
+- Waren- und Stadtfaktoren
+
+---
+
+## 11. Unterschiede zwischen Dokumentation und Codepfaden
+
+Dieses Handbuch beschreibt den aktuellen Gesamtstand des Hanse-Spiels im Repository.  
+Wenn sich Funktionen zwischen CLI und pygame unterscheiden, ist die pygame-/Android-Version massgeblich fuer die volle Featuretiefe.
+
+Kurz gesagt:
+
+- Vollstaendige Komfortfunktionen: pygame / Android
+- Textbasierter Kernpfad: CLI
+
+---
+
+## 12. Schnellhilfe bei Problemen
+
+- Schwarzer Bildschirm beim Start: `runtime_error.log` oder Android-Boot-Log pruefen.
+- Keine Musik: Mixer/Codec auf dem Zielsystem nicht verfuegbar oder Musik in den Einstellungen deaktiviert.
+- Englisch unvollstaendig: Die UI-Sprache betrifft den grafischen Spielpfad; die CLI bleibt ein eigener Textpfad.
+- Keine Investitionsbuttons: In Fernhandelszonen sind lokale Stadtaktionen absichtlich deaktiviert.
+- Kein Fernziel sichtbar: Die Region muss bereits durch das aktuelle Jahrhundert freigeschaltet sein.
+
+---
+
+## 13. Referenzen
+
+- Hauptspiel: `HP_Game/pygame_game.py`
+- Android-Spiegel: `HP_Android/HP_Game/pygame_game.py`
+- Datenbasis: `HP_Game/game_data.py`
+- Modelle: `HP_Game/models.py`
+- ATHERIA-Adapter: `HP_Game/atheria_economy.py`
+- Webseite / Projektlink: `https://github.com/kruemmel-python/Cloud-Hanse-Drive-Sync`

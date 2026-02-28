@@ -3,6 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
+try:
+    from game_data import CITIES as _GAME_CITIES
+except Exception:
+    _GAME_CITIES = [
+        "Luebeck",
+        "Bergen",
+        "Toensberg",
+        "Warberg",
+        "Malmoe",
+        "Ystad",
+        "Visby",
+        "Riga",
+        "Novgorod",
+    ]
+
 
 @dataclass
 class Ship:
@@ -209,22 +224,31 @@ class CityEconomy:
                 except (TypeError, ValueError):
                     self.inventory[key] = base
 
-    def scarcity_factor(self, good_name: str) -> float:
+    def scarcity_components(self, good_name: str) -> Dict[str, float]:
         stock = max(0, int(self.inventory.get(good_name, 0)))
         if stock <= 40:
             # Knappheit wird teuer, aber bleibt im kontrollierten Bereich.
-            base = min(1.45, 1.10 + (40 - stock) / 120.0)
+            scarcity_base = min(1.45, 1.10 + (40 - stock) / 120.0)
         elif stock < 120:
-            base = 1.05 + (120 - stock) / 400.0
+            scarcity_base = 1.05 + (120 - stock) / 400.0
         elif stock <= 220:
-            base = 1.0
+            scarcity_base = 1.0
         elif stock <= 260:
-            base = 1.0 - (stock - 220) / 500.0
+            scarcity_base = 1.0 - (stock - 220) / 500.0
         else:
-            base = max(0.78, 0.92 - (stock - 260) / 900.0)
+            scarcity_base = max(0.78, 0.92 - (stock - 260) / 900.0)
         # Dauerhafte Sozialinvestitionen entlasten lokal den Knappheitsdruck.
-        relief = max(0.0, min(0.55, float(self.local_scarcity_relief)))
-        return max(0.62, min(1.60, base * (1.0 - relief)))
+        local_relief = max(0.0, min(0.55, float(self.local_scarcity_relief)))
+        scarcity_final = max(0.62, min(1.60, scarcity_base * (1.0 - local_relief)))
+        return {
+            "stock": float(stock),
+            "scarcity_base": float(scarcity_base),
+            "local_scarcity_relief": float(local_relief),
+            "scarcity_final": float(scarcity_final),
+        }
+
+    def scarcity_factor(self, good_name: str) -> float:
+        return float(self.scarcity_components(good_name)["scarcity_final"])
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CityEconomy":
@@ -495,6 +519,8 @@ class Player:
     )
     building_shares: Dict[str, Dict[str, float]] = field(default_factory=dict)
     city_influence: Dict[str, float] = field(default_factory=dict)
+    auto_enabled: bool = False
+    auto_policy: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.ships:
@@ -572,6 +598,51 @@ class Player:
             except (TypeError, ValueError):
                 normalized_investments[key] = 0.0
         self.investments = normalized_investments
+        self.auto_enabled = bool(self.auto_enabled)
+        self.auto_policy = self._normalize_auto_policy(self.auto_policy)
+
+    def _default_auto_policy(self) -> Dict[str, Any]:
+        return {
+            "risk": 50,
+            "reserve_mark": 1400,
+            "invest_mode": "balanced",
+            "focus_cities": {city_name: True for city_name in _GAME_CITIES},
+        }
+
+    def _normalize_auto_policy(self, raw: Any) -> Dict[str, Any]:
+        default_policy = self._default_auto_policy()
+        if not isinstance(raw, dict):
+            return default_policy
+
+        normalized: Dict[str, Any] = dict(default_policy)
+
+        risk_raw = raw.get("risk", default_policy["risk"])
+        try:
+            normalized["risk"] = max(0, min(100, int(risk_raw)))
+        except (TypeError, ValueError):
+            normalized["risk"] = default_policy["risk"]
+
+        reserve_raw = raw.get("reserve_mark", default_policy["reserve_mark"])
+        try:
+            normalized["reserve_mark"] = max(0, int(reserve_raw))
+        except (TypeError, ValueError):
+            normalized["reserve_mark"] = default_policy["reserve_mark"]
+
+        invest_mode = str(raw.get("invest_mode", default_policy["invest_mode"])).strip().lower()
+        if invest_mode not in {"conservative", "balanced", "aggressive"}:
+            invest_mode = default_policy["invest_mode"]
+        normalized["invest_mode"] = invest_mode
+
+        focus_raw = raw.get("focus_cities", {})
+        focus_cities: Dict[str, bool] = {}
+        if isinstance(focus_raw, dict):
+            for city_name in _GAME_CITIES:
+                focus_cities[city_name] = bool(focus_raw.get(city_name, True))
+        else:
+            for city_name in _GAME_CITIES:
+                focus_cities[city_name] = True
+        normalized["focus_cities"] = focus_cities
+        return normalized
 
     @property
     def total_cargo(self) -> int:
@@ -637,6 +708,8 @@ class Player:
                 for city, shares in self.building_shares.items()
             },
             "city_influence": {city: float(score) for city, score in self.city_influence.items()},
+            "auto_enabled": bool(self.auto_enabled),
+            "auto_policy": dict(self.auto_policy),
         }
 
     @classmethod
@@ -749,6 +822,9 @@ class Player:
                     continue
                 if score > 0:
                     city_influence[str(raw_city)] = score
+        auto_enabled = bool(data.get("auto_enabled", False))
+        auto_policy_raw = data.get("auto_policy", {})
+        auto_policy = dict(auto_policy_raw) if isinstance(auto_policy_raw, dict) else {}
         child_names_raw = data.get("child_names", [])
         child_names: List[str] = []
         if isinstance(child_names_raw, list):
@@ -802,4 +878,6 @@ class Player:
             investments=investments_dict,
             building_shares=building_shares,
             city_influence=city_influence,
+            auto_enabled=auto_enabled,
+            auto_policy=auto_policy,
         )
