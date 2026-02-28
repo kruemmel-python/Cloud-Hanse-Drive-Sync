@@ -1198,6 +1198,7 @@ class PygameHanseApp:
         self.player: Player | None = None
         self.current_year = STARTING_YEAR
         self.current_month = STARTING_MONTH
+        self.current_century = year_to_century(self.current_year)
         self.current_sea_state = self.rng.choice(SEA_STATES)
         self.market_cache: Dict[Tuple[int, int, str, str], Dict[str, int]] = {}
         self.economy_engine = AtheriaEconomyEngine()
@@ -1267,7 +1268,6 @@ class PygameHanseApp:
         self.auto_popup_hold_until = 0
         self.auto_last_ship_build_month = -9999
         self.time_limit_reached = False
-        self.current_century = year_to_century(self.current_year)
         self.selected_weapon_century = self.current_century
         self.fleet_drag_active = False
         self.fleet_drag_start_y = 0
