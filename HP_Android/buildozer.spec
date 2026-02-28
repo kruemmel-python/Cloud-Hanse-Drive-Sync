@@ -17,7 +17,7 @@ version = 1.0.0
 source.dir = .
 
 # (list) Source files to include (comma separated)
-source.include_exts = py,png,webp,jpg,jpeg,ttf,otf,json,txt
+source.include_exts = py,png,webp,jpg,jpeg,ttf,otf,json,txt,ogg,ogx,opus
 
 # (str) Entry point of the application
 entrypoint = main.py
