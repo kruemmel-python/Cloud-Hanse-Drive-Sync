@@ -175,6 +175,30 @@ UI_SETTINGS_FILE = "ui_settings.json"
 UI_LANGUAGES = ("de", "en")
 DEFAULT_MUSIC_VOLUME = 0.65
 MUSIC_VOLUME_STEP = 0.1
+FROZEN_APP_DIR_NAME = "Hanse_Atheria"
+
+
+def _runtime_asset_root() -> Path:
+    frozen_root = getattr(sys, "_MEIPASS", None)
+    if frozen_root:
+        return Path(frozen_root)
+    return Path(__file__).resolve().parent
+
+
+def _default_save_dir() -> Path:
+    if ("ANDROID_ARGUMENT" in os.environ) or (sys.platform == "android"):
+        return Path(__file__).resolve().parent / SAVE_DIR
+    if getattr(sys, "frozen", False):
+        if os.name == "nt":
+            base_dir = Path(os.getenv("APPDATA", "")).expanduser()
+            if not str(base_dir):
+                base_dir = Path.home() / "AppData" / "Roaming"
+        else:
+            base_dir = Path(os.getenv("XDG_DATA_HOME", "")).expanduser()
+            if not str(base_dir):
+                base_dir = Path.home() / ".local" / "share"
+        return base_dir / FROZEN_APP_DIR_NAME / SAVE_DIR
+    return Path(__file__).resolve().parent / SAVE_DIR
 
 UI_EN_EXACT: Dict[str, str] = {
     "Neues Spiel": "New Game",
@@ -1149,7 +1173,7 @@ class PygameHanseApp:
         self.font = pygame.font.Font(None, 28)
         self.font_small = pygame.font.Font(None, 22)
 
-        self.image_dir = Path(__file__).with_name("images")
+        self.image_dir = _runtime_asset_root() / "images"
         self.images: Dict[str, pygame.Surface] = {}
         self.scaled_images: Dict[Tuple[str, int, int], pygame.Surface] = {}
         self._load_images()
@@ -1157,7 +1181,7 @@ class PygameHanseApp:
         self.rng = random.Random()
         self.scene = "menu"
 
-        self.save_dir = Path(__file__).with_name(SAVE_DIR)
+        self.save_dir = _default_save_dir()
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.settings_path = self.save_dir / UI_SETTINGS_FILE
         self.music_path = self._resolve_music_path()
@@ -1347,14 +1371,15 @@ class PygameHanseApp:
             self._log("Sprache auf Deutsch umgestellt.")
 
     def _resolve_music_path(self) -> Path:
-        local_dir = Path(__file__).resolve().parent
+        asset_root = _runtime_asset_root()
+        launcher_dir = Path(sys.argv[0]).resolve().parent
         candidates = [
-            local_dir / "Hanse_Atheria.opus",
-            local_dir / "Hanse_Atheria.ogg",
-            Path(__file__).with_name("Hanse_Atheria.opus"),
-            Path(__file__).with_name("Hanse_Atheria.ogg"),
-            Path(sys.argv[0]).resolve().parent / "HP_Game" / "Hanse_Atheria.opus",
-            Path(sys.argv[0]).resolve().parent / "HP_Game" / "Hanse_Atheria.ogg",
+            asset_root / "Hanse_Atheria.ogg",
+            asset_root / "Hanse_Atheria.opus",
+            launcher_dir / "Hanse_Atheria.ogg",
+            launcher_dir / "Hanse_Atheria.opus",
+            launcher_dir / "HP_Game" / "Hanse_Atheria.ogg",
+            launcher_dir / "HP_Game" / "Hanse_Atheria.opus",
         ]
         seen: set[str] = set()
         for candidate in candidates:
@@ -1364,7 +1389,7 @@ class PygameHanseApp:
             seen.add(key)
             if candidate.exists():
                 return candidate
-        return local_dir / "Hanse_Atheria.opus"
+        return asset_root / "Hanse_Atheria.ogg"
 
     def _can_play_music(self) -> bool:
         if not bool(getattr(self, "music_available", False)):
@@ -3696,6 +3721,8 @@ class PygameHanseApp:
             self.settings_path = self.save_dir / UI_SETTINGS_FILE
         if not hasattr(self, "music_path"):
             self.music_path = self._resolve_music_path()
+        if not hasattr(self, "image_dir"):
+            self.image_dir = _runtime_asset_root() / "images"
         if not hasattr(self, "ui_language") or str(getattr(self, "ui_language", "")).strip().lower() not in UI_LANGUAGES:
             self.ui_language = self._load_ui_language()
         if not hasattr(self, "music_enabled"):
@@ -9691,7 +9718,7 @@ def run_pygame_game() -> int:
         )
         log_targets: List[Path] = []
         try:
-            save_dir = Path(__file__).with_name(SAVE_DIR)
+            save_dir = _default_save_dir()
             save_dir.mkdir(parents=True, exist_ok=True)
             log_targets.append(save_dir / "boot_error.log")
         except OSError:

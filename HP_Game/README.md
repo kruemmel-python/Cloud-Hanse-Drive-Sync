@@ -46,6 +46,24 @@ python HP_Game/main.py
 - `SPIELHANDBUCH.md` / `SPIELHANDBUCH.html`: umfassende Dokumentation
 - `SPIELANLEITUNG.md` / `SPIELANLEITUNG.html`: Schnellstart und Bedienhilfe
 
+## Build-Ausgaben fuer Desktop
+
+Es gibt jetzt einen eigenen Build-Ordner:
+
+- `HP_Game/build/`
+
+Dort liegen:
+
+- `hanse_pygame.spec`: PyInstaller-Konfiguration
+- `build_windows.ps1`: Windows-Build fuer die `.exe`
+- `build_ubuntu.sh`: Ubuntu-/Linux-Build fuer die native Binary
+- `README.md`: Build-Hinweise
+
+Typische Ziele:
+
+- Windows: `HP_Game/build/dist/windows/Hanse_Atheria/Hanse_Atheria.exe`
+- Ubuntu: `HP_Game/build/dist/linux/Hanse_Atheria/Hanse_Atheria`
+
 ## Projektinformationen im Spiel
 
 Das Save-Menue der pygame-Version enthaelt einen `Info`-Button mit:
