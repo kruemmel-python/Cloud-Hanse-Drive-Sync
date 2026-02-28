@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Hanse: Atheria Edition
+Comment=Hanse trade simulation with ATHERIA economy
+Exec=./Hanse_Atheria
+Terminal=false
+Categories=Game;Simulation;
